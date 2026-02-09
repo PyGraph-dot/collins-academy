@@ -4,11 +4,14 @@ import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
+// FIX: Import CartItem (not Product)
 import { useCart, CartItem } from "@/store/cart";
 
 export default function Library() {
   const containerRef = useRef(null);
   const { addItem, toggleCart, currency } = useCart();
+  
+  // FIX: Use CartItem[] here
   const [products, setProducts] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,7 +19,7 @@ export default function Library() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        // We keep 'no-store' to fix the caching issue
+        // We keep 'no-store' to ensure we see new uploads immediately
         const res = await fetch("/api/products", { cache: 'no-store' });
         const data = await res.json();
         
@@ -42,10 +45,10 @@ export default function Library() {
       {/* Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#d4af37]/5 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="container mx-auto px-6 mb-16 flex flex-col md:flex-row items-end justify-between gap-6 relative z-10">
+      <div className="container mx-auto px-6 mb-12 flex flex-col md:flex-row items-end justify-between gap-6 relative z-10">
         <div>
-          <span className="text-[#d4af37] text-xs font-bold tracking-[0.2em] uppercase mb-4 block">The Collection</span>
-          <h2 className="text-4xl md:text-5xl font-serif text-white">Essential Reading.</h2>
+          <span className="text-[#d4af37] text-xs font-bold tracking-widest uppercase mb-2 block">The Collection</span>
+          <h2 className="text-3xl md:text-5xl font-serif text-white">Essential Reading.</h2>
         </div>
         <Link href="/shop" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2 border-b border-transparent hover:border-[#d4af37] pb-1">
            View all resources <ArrowRight size={14} />
@@ -72,7 +75,7 @@ export default function Library() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="group relative w-[300px] md:w-full flex-shrink-0 snap-center h-full"
+                  className="group relative w-[280px] md:w-full flex-shrink-0 snap-center h-full"
                 >
                   <div className="relative bg-[#111] border border-white/5 p-4 rounded-2xl h-full flex flex-col justify-between transition-all duration-500 hover:-translate-y-2 hover:border-[#d4af37]/30 hover:shadow-2xl hover:shadow-[#d4af37]/5">
                     
@@ -80,7 +83,6 @@ export default function Library() {
                     <div className="relative w-full aspect-[4/5] bg-[#0a0a0a] rounded-xl overflow-hidden mb-6 flex items-center justify-center border border-white/5 group-hover:border-white/10 transition-colors">
                       
                       {book.image ? (
-                        // We use object-cover for full bleed, or object-contain if you want padding
                         <img 
                           src={book.image} 
                           alt={book.title} 
