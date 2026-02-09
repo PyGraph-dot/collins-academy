@@ -96,7 +96,8 @@ export default function CartDrawer() {
                 </div>
               ) : (
                 items.map((item) => (
-                  <div key={item._id || item.id} className="flex gap-4 bg-white/5 p-3 rounded-lg border border-white/5">
+                  // FIX: Removed "|| item.id" to satisfy TypeScript
+                  <div key={item._id} className="flex gap-4 bg-white/5 p-3 rounded-lg border border-white/5">
                     {/* Image */}
                     <div className="w-16 h-20 bg-gray-800 rounded-md overflow-hidden flex-shrink-0">
                        {item.image ? (
@@ -113,7 +114,8 @@ export default function CartDrawer() {
                       </p>
                     </div>
                     
-                    <button onClick={() => removeItem(item._id || item.id)} className="text-gray-500 hover:text-red-400 p-2">
+                    {/* FIX: Removed "|| item.id" here too */}
+                    <button onClick={() => removeItem(item._id)} className="text-gray-500 hover:text-red-400 p-2">
                       <Trash2 size={16} />
                     </button>
                   </div>
