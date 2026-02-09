@@ -1,24 +1,22 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { useEffect, useState } from "react";
 import { ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
-import Link from "next/link"; // <--- THIS WAS MISSING
+import Link from "next/link";
 import { useCart, CartItem } from "@/store/cart";
 
 export default function Library() {
-  const containerRef = useRef(null);
-  const isInView = useInView(containerRef, { once: true, margin: "-100px" });
   const { addItem, toggleCart, currency } = useCart();
-  
   const [products, setProducts] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProducts() {
       try {
+        // We add 'no-store' to ensure we always get fresh data
         const res = await fetch('/api/products', { cache: 'no-store' });
         const data = await res.json();
+        console.log("Books loaded:", data); // Check your browser console!
         setProducts(data);
       } catch (error) {
         console.error("Failed to load library", error);
@@ -43,37 +41,28 @@ export default function Library() {
   }
 
   return (
-    <section ref={containerRef} className="py-32 px-6 bg-[#0a0a0a] relative overflow-hidden">
+    <section className="py-32 px-6 bg-[#0a0a0a] relative overflow-hidden">
       {/* Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#d4af37]/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8 }}
-          className="mb-20"
-        >
+        <div className="mb-20">
           <span className="text-[#d4af37] text-sm tracking-[0.2em] uppercase font-bold mb-4 block">The Collection</span>
           <h2 className="text-4xl md:text-6xl font-serif text-white leading-tight">
             Essential <span className="italic text-gray-400">Reading.</span>
           </h2>
-        </motion.div>
+          {/* DEBUG TEXT: If this shows 0, the fetch failed. If it shows 1, the book is there. */}
+          <p className="text-gray-600 text-xs mt-4">Loaded {products.length} Items</p>
+        </div>
 
         {products.length === 0 ? (
-          <div className="text-center text-gray-500 py-20">
-            <p>No books available yet. Check back soon.</p>
+          <div className="text-center text-gray-500 py-20 border border-white/10 rounded-xl">
+            <p>No books found in database.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
-            {products.map((book, i) => (
-              <motion.div
-                key={book._id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={isInView ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.8, delay: i * 0.1 }}
-                className="group cursor-pointer"
-              >
+            {products.map((book) => (
+              <div key={book._id} className="group cursor-pointer">
                 {/* Book Cover */}
                 <div className="relative aspect-[3/4] bg-[#111] mb-8 overflow-hidden rounded-sm border border-white/5 group-hover:border-[#d4af37]/30 transition-colors duration-500">
                   {book.image ? (
@@ -104,6 +93,7 @@ export default function Library() {
                       {book.title}
                     </h3>
                     <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">
+                      {/* FIX: Handle description safely */}
                       {(book as any).description || "A comprehensive guide to mastering English grammar."}
                     </p>
                   </div>
@@ -113,7 +103,7 @@ export default function Library() {
                     </span>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
