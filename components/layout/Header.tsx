@@ -22,7 +22,7 @@ export default function Header() {
 
   // Close mobile menu when route changes
   useEffect(() => {
-    setIsOpen(false);
+    if (isOpen) setIsOpen(false);
   }, [pathname]);
 
   return (
@@ -35,7 +35,7 @@ export default function Header() {
         <div className="container mx-auto px-6 flex justify-between items-center">
           
           {/* Logo */}
-          <Link href="/" className="text-xl font-serif text-white tracking-wider font-bold">
+          <Link href="/" className="text-xl font-serif text-white tracking-wider font-bold z-[102] relative">
             COLLINS<span className="text-[#d4af37]">.</span>
           </Link>
 
@@ -52,9 +52,12 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Icons (Cart + Mobile Menu) */}
-          <div className="flex items-center gap-6">
-            <button 
+          {/* Icons Area */}
+          <div className="flex items-center gap-6 z-[102] relative">
+            
+            {/* CART BUTTON */}
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
               onClick={toggleCart} 
               className="relative text-white hover:text-[#d4af37] transition-colors"
             >
@@ -64,15 +67,40 @@ export default function Header() {
                   {items.length}
                 </span>
               )}
-            </button>
+            </motion.button>
 
-            {/* Mobile Hamburger Button */}
-            <button 
+            {/* MOBILE HAMBURGER BUTTON (Animated) */}
+            <motion.button 
+              initial={false}
+              animate={isOpen ? "open" : "closed"}
               onClick={() => setIsOpen(!isOpen)} 
-              className="md:hidden text-white hover:text-[#d4af37] transition-colors z-[101]"
+              className="md:hidden text-white hover:text-[#d4af37] transition-colors w-8 h-8 flex items-center justify-center"
             >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+              <AnimatePresence mode="wait">
+                {isOpen ? (
+                  <motion.div
+                    key="close"
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <X size={24} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="menu"
+                    initial={{ rotate: 90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: -90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Menu size={24} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+
           </div>
         </div>
       </header>
@@ -84,7 +112,8 @@ export default function Header() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 bg-[#0a0a0a] z-[90] flex flex-col items-center justify-center space-y-8 md:hidden"
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-[#0a0a0a] z-[100] flex flex-col items-center justify-center space-y-8 md:hidden"
           >
             {['Shop', 'About', 'Academy'].map((item) => (
               <Link
