@@ -1,23 +1,28 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { ShoppingBag, ArrowRight, Loader2, Star } from "lucide-react";
-import Link from "next/link";
-import { useCart, CartItem } from "@/store/cart";
+import { useRef, useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
+import { useCart, Product } from "@/store/cart";
 
 export default function Library() {
-  const { addItem, toggleCart, currency } = useCart();
-  const [products, setProducts] = useState<CartItem[]>([]);
+  const containerRef = useRef(null);
+  const { addItem, currency } = useCart();
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch Data from API
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch('/api/products', { cache: 'no-store' });
+        const res = await fetch("/api/products");
         const data = await res.json();
-        setProducts(data);
+        
+        // Only set products if we actually got data back
+        if (data && Array.isArray(data)) {
+          setProducts(data);
+        }
       } catch (error) {
-        console.error("Failed to load library", error);
+        console.error("Failed to fetch products", error);
       } finally {
         setLoading(false);
       }
@@ -25,99 +30,89 @@ export default function Library() {
     fetchProducts();
   }, []);
 
-  const handleAddToCart = (product: CartItem) => {
-    addItem(product);
-    toggleCart();
-  };
-
-  if (loading) {
-    return (
-      <section className="py-32 bg-[#0a0a0a] flex justify-center">
-        <Loader2 className="animate-spin text-[#d4af37]" size={40} />
-      </section>
-    );
-  }
-
   return (
-    <section className="py-32 px-6 bg-[#0a0a0a] relative overflow-hidden">
-      {/* Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#d4af37]/5 blur-[120px] rounded-full pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="mb-16 flex justify-between items-end">
-          <div>
-            <span className="text-[#d4af37] text-sm tracking-[0.2em] uppercase font-bold mb-4 block">The Collection</span>
-            <h2 className="text-4xl md:text-6xl font-serif text-white leading-tight">
-              Essential <span className="italic text-gray-400">Reading.</span>
-            </h2>
-          </div>
-          <Link href="/shop" className="hidden md:flex text-white hover:text-[#d4af37] transition-colors uppercase tracking-widest text-xs border-b border-transparent hover:border-[#d4af37] pb-1 items-center gap-2">
-             View all <ArrowRight size={14} />
-          </Link>
+    <section id="library" ref={containerRef} className="py-24 md:py-32 bg-[#0a0a0a] overflow-hidden relative">
+      <div className="container mx-auto px-6 mb-12 flex flex-col md:flex-row items-end justify-between gap-6">
+        <div>
+          <span className="text-[#d4af37] text-xs font-bold tracking-widest uppercase mb-2 block">The Collection</span>
+          <h2 className="text-3xl md:text-5xl font-serif text-white">Essential Reading.</h2>
         </div>
+        <button className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+          View all resources <ArrowRight size={14} />
+        </button>
+      </div>
 
-        {/* Product Grid */}
-        {products.length === 0 ? (
-          <div className="text-center text-gray-500 py-20 border border-white/10 rounded-xl bg-[#111]">
-            <p>No books found. Please check back later.</p>
-          </div>
+      <div className="overflow-x-auto md:overflow-visible pb-12 px-6 md:px-0 -mx-6 md:mx-0 scrollbar-hide snap-x snap-mandatory">
+        
+        {loading ? (
+           <div className="w-full h-[400px] flex items-center justify-center">
+             <Loader2 className="animate-spin text-[#d4af37]" size={40} />
+           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((book) => (
-              <div 
-                key={book._id} 
-                className="group relative bg-[#111] border border-white/10 rounded-xl overflow-hidden hover:border-[#d4af37]/50 transition-all duration-500 hover:shadow-2xl hover:shadow-[#d4af37]/10 flex flex-col h-full"
-              >
-                {/* Image Area - Fixed Aspect Ratio */}
-                <div className="aspect-square relative overflow-hidden bg-gray-900 border-b border-white/5">
-                  {book.image ? (
-                    <img 
-                      src={book.image} 
-                      alt={book.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-700">No Cover</div>
-                  )}
+          <div className="flex md:grid md:grid-cols-3 gap-6 md:gap-8 w-max md:w-full px-6 md:px-0">
+            {products.length === 0 ? (
+               <div className="text-gray-500 text-sm italic col-span-3 text-center py-20">
+                 No books available yet. Check back soon.
+               </div>
+            ) : (
+              products.map((book, i) => (
+                <motion.div
+                  key={book._id || book.id}
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="group relative w-[280px] md:w-[320px] flex-shrink-0 snap-center"
+                >
+                  <div className="relative bg-[#111] border border-white/5 p-4 rounded-2xl h-[520px] flex flex-col justify-between transition-transform duration-500 hover:-translate-y-2 hover:border-[#d4af37]/30">
+                    
+                    {/* 1. THE STANDARD FRAME (Fixed Height + Center Content) */}
+                    <div className="relative w-full h-[320px] bg-[#0a0a0a] rounded-xl overflow-hidden mb-6 flex items-center justify-center border border-white/5 group-hover:border-white/10 transition-colors">
+                      
+                      {book.image ? (
+                        // The Image sits INSIDE the frame, never stretching
+                        <img 
+                          src={book.image} 
+                          alt={book.title} 
+                          className="w-full h-full object-contain p-2 shadow-2xl transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        // Fallback for missing images
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-700">
+                           <span className="font-serif text-4xl opacity-20">{i + 1}</span>
+                           <span className="text-[10px] uppercase tracking-widest mt-2 opacity-40">No Cover</span>
+                        </div>
+                      )}
 
-                  {/* Dark Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-transparent opacity-60" />
+                      {/* Glossy overlay for premium feel */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                    </div>
 
-                  {/* Top Badge */}
-                  <div className="absolute top-4 left-4">
-                    <span className="bg-[#d4af37] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-lg">
-                      <Star size={10} fill="black" /> Vol. 1
-                    </span>
+                    {/* 2. THE CONTENT (Always aligned) */}
+                    <div className="flex-1 flex flex-col justify-end">
+                       <div className="flex justify-between items-start mb-3">
+                          <span className="text-[10px] uppercase tracking-widest text-gray-500">{book.category || 'Book'}</span>
+                          <span className="text-[#d4af37] text-lg font-bold font-serif">
+                            {currency === 'NGN' ? '₦' : '$'}{currency === 'NGN' ? book.priceNGN.toLocaleString() : book.priceUSD}
+                          </span>
+                       </div>
+                       
+                       <h3 className="text-xl font-serif text-white mb-6 line-clamp-2 min-h-[3.5rem] leading-tight">
+                         {book.title}
+                       </h3>
+                       
+                       <button 
+                          onClick={() => addItem(book)}
+                          className="w-full py-4 bg-white/5 hover:bg-[#d4af37] hover:text-black transition-all border border-white/10 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 group-hover:border-[#d4af37]"
+                       >
+                          <ShoppingBag size={16} />
+                          Add to Cart
+                       </button>
+                    </div>
                   </div>
-                </div>
-
-                {/* Content Area - Flex Grow to push button down */}
-                <div className="p-6 flex flex-col flex-grow">
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-xl text-white font-serif leading-snug group-hover:text-[#d4af37] transition-colors line-clamp-1">
-                      {book.title}
-                    </h3>
-                    <p className="text-[#d4af37] font-bold text-lg font-mono whitespace-nowrap ml-4">
-                      {currency === 'NGN' ? '₦' : '$'}{currency === 'NGN' ? book.priceNGN.toLocaleString() : book.priceUSD}
-                    </p>
-                  </div>
-
-                  {/* Description - Strictly limited to 2 lines */}
-                  <p className="text-gray-400 text-sm line-clamp-2 mb-6 leading-relaxed">
-                    {(book as any).description || "Master the art of English syntax with this comprehensive guide."}
-                  </p>
-
-                  {/* Button - Pushed to bottom with mt-auto */}
-                  <button 
-                    onClick={() => handleAddToCart(book)}
-                    className="mt-auto w-full bg-white/5 hover:bg-[#d4af37] text-white hover:text-black border border-white/10 hover:border-[#d4af37] py-3 rounded-lg font-bold uppercase tracking-wider text-xs transition-all duration-300 flex items-center justify-center gap-2"
-                  >
-                    <ShoppingBag size={16} /> Add to Cart
-                  </button>
-                </div>
-              </div>
-            ))}
+                </motion.div>
+              ))
+            )}
           </div>
         )}
       </div>
