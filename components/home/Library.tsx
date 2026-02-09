@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
+import { ShoppingBag, ArrowRight, Loader2, Star } from "lucide-react";
 import Link from "next/link";
 import { useCart, CartItem } from "@/store/cart";
 
@@ -13,10 +13,8 @@ export default function Library() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        // We add 'no-store' to ensure we always get fresh data
         const res = await fetch('/api/products', { cache: 'no-store' });
         const data = await res.json();
-        console.log("Books loaded:", data); // Check your browser console!
         setProducts(data);
       } catch (error) {
         console.error("Failed to load library", error);
@@ -46,25 +44,31 @@ export default function Library() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#d4af37]/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <div className="mb-20">
-          <span className="text-[#d4af37] text-sm tracking-[0.2em] uppercase font-bold mb-4 block">The Collection</span>
-          <h2 className="text-4xl md:text-6xl font-serif text-white leading-tight">
-            Essential <span className="italic text-gray-400">Reading.</span>
-          </h2>
-          {/* DEBUG TEXT: If this shows 0, the fetch failed. If it shows 1, the book is there. */}
-          <p className="text-gray-600 text-xs mt-4">Loaded {products.length} Items</p>
+        <div className="mb-20 flex justify-between items-end">
+          <div>
+            <span className="text-[#d4af37] text-sm tracking-[0.2em] uppercase font-bold mb-4 block">The Collection</span>
+            <h2 className="text-4xl md:text-6xl font-serif text-white leading-tight">
+              Essential <span className="italic text-gray-400">Reading.</span>
+            </h2>
+          </div>
+          <Link href="/shop" className="hidden md:flex text-white hover:text-[#d4af37] transition-colors uppercase tracking-widest text-xs border-b border-transparent hover:border-[#d4af37] pb-1 items-center gap-2">
+             View all <ArrowRight size={14} />
+          </Link>
         </div>
 
         {products.length === 0 ? (
-          <div className="text-center text-gray-500 py-20 border border-white/10 rounded-xl">
-            <p>No books found in database.</p>
+          <div className="text-center text-gray-500 py-20 border border-white/10 rounded-xl bg-[#111]">
+            <p>No books found. Please check back later.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {products.map((book) => (
-              <div key={book._id} className="group cursor-pointer">
-                {/* Book Cover */}
-                <div className="relative aspect-[3/4] bg-[#111] mb-8 overflow-hidden rounded-sm border border-white/5 group-hover:border-[#d4af37]/30 transition-colors duration-500">
+              <div 
+                key={book._id} 
+                className="group relative bg-[#111] border border-white/10 rounded-xl overflow-hidden hover:border-[#d4af37]/50 transition-all duration-500 hover:shadow-2xl hover:shadow-[#d4af37]/10"
+              >
+                {/* Image Container */}
+                <div className="aspect-[4/5] relative overflow-hidden bg-gray-900">
                   {book.image ? (
                     <img 
                       src={book.image} 
@@ -72,47 +76,49 @@ export default function Library() {
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-700">Cover Image</div>
+                    <div className="w-full h-full flex items-center justify-center text-gray-700">No Cover</div>
                   )}
-                  
-                  {/* Overlay Button */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px]">
-                    <button 
-                      onClick={() => handleAddToCart(book)}
-                      className="bg-white text-black px-8 py-3 rounded-full font-bold uppercase tracking-wider text-xs hover:bg-[#d4af37] transition-colors flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 duration-300"
-                    >
-                      <ShoppingBag size={14} /> Add to Cart
-                    </button>
+
+                  {/* Dark Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-transparent opacity-60" />
+
+                  {/* Top Badge */}
+                  <div className="absolute top-4 left-4">
+                    <span className="bg-[#d4af37] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                      <Star size={10} fill="black" /> Best Seller
+                    </span>
                   </div>
                 </div>
 
-                {/* Book Info */}
-                <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <h3 className="text-xl text-white font-serif mb-2 leading-snug group-hover:text-[#d4af37] transition-colors">
-                      {book.title}
-                    </h3>
-                    <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">
-                      {/* FIX: Handle description safely */}
-                      {(book as any).description || "A comprehensive guide to mastering English grammar."}
+                {/* Content Area */}
+                <div className="p-6 relative">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl text-white font-serif leading-snug group-hover:text-[#d4af37] transition-colors">
+                        {book.title}
+                      </h3>
+                      <p className="text-gray-500 text-xs mt-1 uppercase tracking-wider">Digital Edition</p>
+                    </div>
+                    <p className="text-[#d4af37] font-bold text-lg font-mono">
+                      {currency === 'NGN' ? '₦' : '$'}{currency === 'NGN' ? book.priceNGN.toLocaleString() : book.priceUSD}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <span className="block text-[#d4af37] font-bold text-lg">
-                      {currency === 'NGN' ? '₦' : '$'}{currency === 'NGN' ? book.priceNGN.toLocaleString() : book.priceUSD}
-                    </span>
-                  </div>
+
+                  <p className="text-gray-400 text-sm line-clamp-2 mb-6 leading-relaxed h-10">
+                    {(book as any).description || "Master the art of English syntax with this comprehensive guide."}
+                  </p>
+
+                  <button 
+                    onClick={() => handleAddToCart(book)}
+                    className="w-full bg-white/5 hover:bg-[#d4af37] text-white hover:text-black border border-white/10 hover:border-[#d4af37] py-3 rounded-lg font-bold uppercase tracking-wider text-xs transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <ShoppingBag size={16} /> Add to Cart
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
-
-        <div className="mt-20 text-center">
-          <Link href="/shop" className="text-white hover:text-[#d4af37] transition-colors uppercase tracking-widest text-xs border-b border-transparent hover:border-[#d4af37] pb-1 inline-flex items-center gap-2">
-            View all resources <ArrowRight size={14} />
-          </Link>
-        </div>
       </div>
     </section>
   );
