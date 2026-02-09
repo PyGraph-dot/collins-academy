@@ -30,10 +30,10 @@ async function connectDB() {
     const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
-      family: 4, // <--- THE MAGIC FIX
+      // REMOVED "family: 4" - This allows Vercel to use IPv6 if needed
     };
 
-    console.log("🟡 Starting new MongoDB connection (IPv4)...");
+    console.log("🟡 Connecting to MongoDB...");
     
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       console.log("✅ New MongoDB Connection Established");

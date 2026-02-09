@@ -20,11 +20,13 @@ export async function GET(req: Request) {
       return NextResponse.json(products);
     }
   } catch (error: any) {
-    // LOG THE ACTUAL ERROR TO THE TERMINAL
     console.error("❌ DATABASE ERROR DETAILS:", error.message);
     
-    // Return an empty array so the frontend doesn't crash
-    return NextResponse.json([], { status: 200 }); 
+    // NEW: Send the error to the browser so we can see it!
+    return NextResponse.json(
+      { error: "Database Connection Failed", details: error.message }, 
+      { status: 500 }
+    ); 
   }
 }
 
