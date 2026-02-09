@@ -44,7 +44,8 @@ export default function Library() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#d4af37]/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <div className="mb-20 flex justify-between items-end">
+        {/* Header */}
+        <div className="mb-16 flex justify-between items-end">
           <div>
             <span className="text-[#d4af37] text-sm tracking-[0.2em] uppercase font-bold mb-4 block">The Collection</span>
             <h2 className="text-4xl md:text-6xl font-serif text-white leading-tight">
@@ -56,19 +57,20 @@ export default function Library() {
           </Link>
         </div>
 
+        {/* Product Grid */}
         {products.length === 0 ? (
           <div className="text-center text-gray-500 py-20 border border-white/10 rounded-xl bg-[#111]">
             <p>No books found. Please check back later.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map((book) => (
               <div 
                 key={book._id} 
-                className="group relative bg-[#111] border border-white/10 rounded-xl overflow-hidden hover:border-[#d4af37]/50 transition-all duration-500 hover:shadow-2xl hover:shadow-[#d4af37]/10"
+                className="group relative bg-[#111] border border-white/10 rounded-xl overflow-hidden hover:border-[#d4af37]/50 transition-all duration-500 hover:shadow-2xl hover:shadow-[#d4af37]/10 flex flex-col h-full"
               >
-                {/* Image Container */}
-                <div className="aspect-[4/5] relative overflow-hidden bg-gray-900">
+                {/* Image Area - Fixed Aspect Ratio */}
+                <div className="aspect-square relative overflow-hidden bg-gray-900 border-b border-white/5">
                   {book.image ? (
                     <img 
                       src={book.image} 
@@ -84,33 +86,32 @@ export default function Library() {
 
                   {/* Top Badge */}
                   <div className="absolute top-4 left-4">
-                    <span className="bg-[#d4af37] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                      <Star size={10} fill="black" /> Best Seller
+                    <span className="bg-[#d4af37] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-lg">
+                      <Star size={10} fill="black" /> Vol. 1
                     </span>
                   </div>
                 </div>
 
-                {/* Content Area */}
-                <div className="p-6 relative">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl text-white font-serif leading-snug group-hover:text-[#d4af37] transition-colors">
-                        {book.title}
-                      </h3>
-                      <p className="text-gray-500 text-xs mt-1 uppercase tracking-wider">Digital Edition</p>
-                    </div>
-                    <p className="text-[#d4af37] font-bold text-lg font-mono">
+                {/* Content Area - Flex Grow to push button down */}
+                <div className="p-6 flex flex-col flex-grow">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="text-xl text-white font-serif leading-snug group-hover:text-[#d4af37] transition-colors line-clamp-1">
+                      {book.title}
+                    </h3>
+                    <p className="text-[#d4af37] font-bold text-lg font-mono whitespace-nowrap ml-4">
                       {currency === 'NGN' ? '₦' : '$'}{currency === 'NGN' ? book.priceNGN.toLocaleString() : book.priceUSD}
                     </p>
                   </div>
 
-                  <p className="text-gray-400 text-sm line-clamp-2 mb-6 leading-relaxed h-10">
+                  {/* Description - Strictly limited to 2 lines */}
+                  <p className="text-gray-400 text-sm line-clamp-2 mb-6 leading-relaxed">
                     {(book as any).description || "Master the art of English syntax with this comprehensive guide."}
                   </p>
 
+                  {/* Button - Pushed to bottom with mt-auto */}
                   <button 
                     onClick={() => handleAddToCart(book)}
-                    className="w-full bg-white/5 hover:bg-[#d4af37] text-white hover:text-black border border-white/10 hover:border-[#d4af37] py-3 rounded-lg font-bold uppercase tracking-wider text-xs transition-all duration-300 flex items-center justify-center gap-2"
+                    className="mt-auto w-full bg-white/5 hover:bg-[#d4af37] text-white hover:text-black border border-white/10 hover:border-[#d4af37] py-3 rounded-lg font-bold uppercase tracking-wider text-xs transition-all duration-300 flex items-center justify-center gap-2"
                   >
                     <ShoppingBag size={16} /> Add to Cart
                   </button>
