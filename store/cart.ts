@@ -1,67 +1,61 @@
-import { create } from 'zustand';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-export interface Product {
-  id: string;
-  _id?: string; // <--- MongoDB document ID
+export interface CartItem {
+  _id: string; // MongoDB ID
   title: string;
   priceNGN: number;
   priceUSD: number;
   image: string;
-  // Optional extra fields
-  volume?: string;
-  color?: string;
-}
-
-interface CartItem extends Product {
-  quantity: number;
+  fileUrl?: string; // The PDF link
 }
 
 interface CartStore {
   items: CartItem[];
-  isOpen: boolean;
   currency: 'NGN' | 'USD';
-  addItem: (product: Product) => void;
-  removeItem: (productId: string) => void;
+  isOpen: boolean;
+  addItem: (item: CartItem) => void;
+  removeItem: (id: string) => void;
+  clearCart: () => void; // <--- WE ADDED THIS LINE (The missing Type)
   toggleCart: () => void;
   setCurrency: (currency: 'NGN' | 'USD') => void;
   total: () => number;
 }
 
-export const useCart = create<CartStore>((set, get) => ({
-  items: [],
-  isOpen: false,
-  currency: 'NGN', // Default to Naira
+export const useCart = create<CartStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      currency: 'NGN',
+      isOpen: false,
 
-  addItem: (product) => set((state) => {
-    const existing = state.items.find(i => i.id === product.id);
-    if (existing) {
-      return {
-        items: state.items.map(i => 
-          i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
-        ),
-        isOpen: true // Auto-open cart when adding
-      };
+      addItem: (item) => {
+        const currentItems = get().items;
+        const exists = currentItems.find((i) => i._id === item._id);
+        if (exists) return; // Don't add duplicates
+        set({ items: [...currentItems, item], isOpen: true });
+      },
+
+      removeItem: (id) => {
+        set({ items: get().items.filter((i) => i._id !== id) });
+      },
+
+      // <--- WE ADDED THIS FUNCTION
+      clearCart: () => {
+        set({ items: [] });
+      },
+
+      toggleCart: () => set({ isOpen: !get().isOpen }),
+
+      setCurrency: (currency) => set({ currency }),
+
+      total: () => {
+        const { items, currency } = get();
+        return items.reduce((sum, item) => sum + (currency === 'NGN' ? item.priceNGN : item.priceUSD), 0);
+      },
+    }),
+    {
+      name: "cart-storage", // Save to localStorage so cart survives refresh
     }
-    return { 
-      items: [...state.items, { ...product, quantity: 1 }], 
-      isOpen: true 
-    };
-  }),
-
-  removeItem: (id) => set((state) => ({
-    // Check against BOTH id and _id to be safe
-    items: state.items.filter(i => (i._id || i.id) !== id)
-  })),
-
-  toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
-  
-  setCurrency: (currency) => set({ currency }),
-
-  total: () => {
-    const { items, currency } = get();
-    return items.reduce((sum, item) => {
-      const price = currency === 'NGN' ? item.priceNGN : item.priceUSD;
-      return sum + (price * item.quantity);
-    }, 0);
-  }
-}));
+  )
+);
