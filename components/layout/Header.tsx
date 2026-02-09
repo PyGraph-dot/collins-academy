@@ -1,79 +1,108 @@
 "use client";
-import { useState } from "react";
-import { motion, useScroll, useMotionValueEvent } from "framer-motion";
-import { ShoppingBag, Menu } from "lucide-react";
-import MagneticButton from "@/components/ui/MagneticButton";
-import Link from "next/link"; // Import Link
-import { useCart } from "@/store/cart"; // Connect Cart State
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ShoppingBag, Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useCart } from "@/store/cart";
+import { CartDrawer } from "@/components/shop/CartDrawer"; // Adjust path if needed, or remove if CartDrawer is separate
 
 export default function Header() {
-  const { scrollY } = useScroll();
-  const [hidden, setHidden] = useState(false);
-  const { toggleCart, items } = useCart(); // Get real cart count
+  const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+  const { items, toggleCart } = useCart();
 
-  // Scroll Logic
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    const previous = scrollY.getPrevious() ?? 0;
-    if (latest > previous && latest > 150) {
-      setHidden(true);
-    } else {
-      setHidden(false);
-    }
-  });
+  // Handle Scroll Effect
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  // Define the Navigation Links here
-  const navLinks = [
-    { name: "Books", path: "/#library" }, // Scrolls to the Library on Home
-    { name: "Academy", path: "/academy" }, // Goes to Academy Page
-    { name: "About", path: "/about" },     // We will build this next
-  ];
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   return (
-    <motion.header
-      variants={{
-        visible: { y: 0 },
-        hidden: { y: "-100%" },
-      }}
-      animate={hidden ? "hidden" : "visible"}
-      transition={{ duration: 0.35, ease: "easeInOut" }}
-      className="fixed top-0 left-0 w-full z-50 px-6 py-6 text-white mix-blend-difference"
-    >
-      <div className="flex justify-between items-center max-w-7xl mx-auto">
-        
-        {/* Logo - Click to go Home */}
-        <Link href="/">
-          <div className="font-serif text-2xl tracking-tighter font-bold cursor-pointer">
-            COLLINS<span className="text-[#d4af37]">.</span>
-          </div>
-        </Link>
-
-        {/* Desktop Nav - Now with Links! */}
-        <nav className="hidden md:flex gap-8 items-center text-sm font-medium tracking-wide">
-          {navLinks.map((item) => (
-            <MagneticButton key={item.name} className="cursor-pointer">
-              <Link href={item.path} className="p-2 hover:text-[#d4af37] transition-colors block">
-                {item.name}
-              </Link>
-            </MagneticButton>
-          ))}
-        </nav>
-
-        {/* Actions */}
-        <div className="flex items-center gap-4">
-          <MagneticButton className="cursor-pointer">
-             <button onClick={toggleCart} className="p-2 relative" aria-label="Open Cart">
-                <ShoppingBag size={20} />
-                {items.length > 0 && (
-                  <span className="absolute top-1 right-0 w-2 h-2 bg-[#d4af37] rounded-full border border-black" />
-                )}
-             </button>
-          </MagneticButton>
+    <>
+      <header
+        className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ${
+          scrolled ? "bg-[#0a0a0a]/90 backdrop-blur-md border-b border-white/5 py-4" : "bg-transparent py-6"
+        }`}
+      >
+        <div className="container mx-auto px-6 flex justify-between items-center">
           
-          <button className="md:hidden" aria-label="Menu">
-            <Menu size={24} />
-          </button>
+          {/* Logo */}
+          <Link href="/" className="text-xl font-serif text-white tracking-wider font-bold">
+            COLLINS<span className="text-[#d4af37]">.</span>
+          </Link>
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-8">
+            {['Shop', 'About', 'Academy'].map((item) => (
+              <Link
+                key={item}
+                href={`/${item.toLowerCase()}`}
+                className="text-sm text-gray-400 hover:text-white uppercase tracking-widest transition-colors"
+              >
+                {item}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Icons (Cart + Mobile Menu) */}
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={toggleCart} 
+              className="relative text-white hover:text-[#d4af37] transition-colors"
+            >
+              <ShoppingBag size={20} />
+              {items.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-[#d4af37] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {items.length}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile Hamburger Button */}
+            <button 
+              onClick={() => setIsOpen(!isOpen)} 
+              className="md:hidden text-white hover:text-[#d4af37] transition-colors z-[101]"
+            >
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
-      </div>
-    </motion.header>
+      </header>
+
+      {/* MOBILE MENU OVERLAY */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed inset-0 bg-[#0a0a0a] z-[90] flex flex-col items-center justify-center space-y-8 md:hidden"
+          >
+            {['Shop', 'About', 'Academy'].map((item) => (
+              <Link
+                key={item}
+                href={`/${item.toLowerCase()}`}
+                className="text-3xl font-serif text-white hover:text-[#d4af37] transition-colors"
+              >
+                {item}
+              </Link>
+            ))}
+            
+            <div className="mt-8 pt-8 border-t border-white/10 w-24 flex justify-center">
+               <span className="text-gray-500 text-xs tracking-widest uppercase">The Collins Academy</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

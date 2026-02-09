@@ -1,39 +1,32 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
-import CartDrawer from "@/components/shop/CartDrawer";
-import WhatsAppFloat from "@/components/ui/WhatsAppFloat"; // Import this
 import "./globals.css";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer"; // <--- IMPORT THIS
+import CartDrawer from "@/components/shop/CartDrawer";
 
-// --- FONT DEFINITIONS (Must be present!) ---
-const serif = Playfair_Display({ 
-  subsets: ["latin"], 
-  variable: "--font-serif",
-  display: "swap",
-});
-
-const sans = Inter({ 
-  subsets: ["latin"], 
-  variable: "--font-sans",
-  display: "swap",
-});
-// -------------------------------------------
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-serif" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Collins | The Art of English",
-  description: "Master pronunciation, vocabulary, and literature.",
+  title: "The Collins Academy",
+  description: "Master the art of English articulation.",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en" className={`${serif.variable} ${sans.variable}`} suppressHydrationWarning>
-      <body className="bg-charcoal-900 text-white antialiased selection:bg-gold-500 selection:text-black">
+    <html lang="en">
+      <body className={`${playfair.variable} ${inter.variable} font-sans bg-[#0a0a0a] text-white antialiased`}>
+        <Header />
         <CartDrawer />
-        <WhatsAppFloat /> {/* Add this here */}
-        {children}
+        <main className="min-h-screen">
+          {children}
+        </main>
+        <Footer /> {/* <--- ADD THIS AT THE BOTTOM */}
       </body>
     </html>
   );
