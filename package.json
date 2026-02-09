@@ -9,9 +9,24 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@paystack/inline-js": "^2.22.7",
+    "@stripe/stripe-js": "^8.7.0",
+    "@studio-freight/react-lenis": "^0.0.47",
+    "@uploadthing/react": "^7.3.3",
+    "autoprefixer": "^10.4.19",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.33.0",
+    "lucide-react": "^0.563.0",
+    "mongoose": "^9.1.6",
     "next": "16.1.6",
+    "next-auth": "^4.24.13",
+    "postcss": "^8.4.31",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "tailwind-merge": "^3.4.0",
+    "uploadthing": "^7.7.4",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -20,7 +35,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5"
   }
 }
