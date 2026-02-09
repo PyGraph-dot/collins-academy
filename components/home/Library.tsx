@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
-// FIX: Import CartItem
+import Link from "next/link"; // <--- THIS WAS MISSING
 import { useCart, CartItem } from "@/store/cart";
 
 export default function Library() {
@@ -11,7 +11,6 @@ export default function Library() {
   const isInView = useInView(containerRef, { once: true, margin: "-100px" });
   const { addItem, toggleCart, currency } = useCart();
   
-  // FIX: Use CartItem[]
   const [products, setProducts] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
