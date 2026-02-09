@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { ShoppingBag, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/store/cart";
-import { CartDrawer } from "@/components/shop/CartDrawer"; // Adjust path if needed, or remove if CartDrawer is separate
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
