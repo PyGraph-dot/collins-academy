@@ -17,7 +17,7 @@ export default function Library() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch('/api/products');
+        const res = await fetch('/api/products', { cache: 'no-store' });
         const data = await res.json();
         setProducts(data);
       } catch (error) {
