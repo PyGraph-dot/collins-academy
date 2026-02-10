@@ -7,24 +7,44 @@ export async function GET() {
   try {
     await connectDB();
 
-    // 1. Count Total Products
-    const totalProducts = await Product.countDocuments({});
-    
-    // 2. Count Total Orders (Success only)
-    const totalOrders = await Order.countDocuments({ status: "success" });
+    const [totalProducts, totalOrders] = await Promise.all([
+      Product.countDocuments({}),
+      Order.countDocuments({ status: "success" }),
+    ]);
 
-    // 3. Calculate Total Revenue (Sum of all successful orders)
-    // We use MongoDB Aggregation to sum the 'totalAmount' field
+    // Calculate Revenue using the SAVED exchange rate for each order
     const revenueStats = await Order.aggregate([
-      { $match: { status: "success" } }, // Filter only successful
-      { $group: { _id: null, total: { $sum: "$totalAmount" } } } // Sum the totalAmount
+      { $match: { status: "success" } },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $multiply: [
+                "$totalAmount",
+                {
+                   // Logic: Use the saved 'exchangeRate'. 
+                   // If it's missing (for old orders), check currency:
+                   // IF USD -> Use 1700. IF NGN -> Use 1.
+                   $ifNull: [ 
+                     "$exchangeRate", 
+                     { 
+                       $cond: { if: { $eq: ["$currency", "USD"] }, then: 1700, else: 1 }
+                     }
+                   ] 
+                }
+              ]
+            }
+          }
+        }
+      }
     ]);
 
     const totalRevenue = revenueStats.length > 0 ? revenueStats[0].total : 0;
 
     return NextResponse.json({
       totalProducts,
-      totalRevenue, // <--- This replaced activeProducts
+      totalRevenue, 
       totalOrders,
     });
   } catch (error) {

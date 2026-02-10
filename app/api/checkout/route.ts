@@ -2,26 +2,32 @@ import { NextResponse } from "next/server";
 import Order from "@/models/Order"; 
 import connectDB from "@/lib/db";
 
-// CONFIG: Manual Exchange Rate (Update this if Naira fluctuates wildly)
-const USD_TO_NGN_RATE = 1700; 
+// CONFIG: Manual Exchange Rate
+// Expert Tip: We use a manual constant for stability. Free APIs can crash or hit limits.
+// Since we save this rate to the DB, changing this number later WON'T break old records.
+const CURRENT_MARKET_RATE = 1700; 
 
-// Helper to Calculate Paystack Fee so Merchant gets exact amount
+function getExchangeRate(currency: string) {
+  if (currency === "USD") return CURRENT_MARKET_RATE;
+  return 1; // NGN to NGN is always 1
+}
+
+// Helper to Calculate Paystack Fee
 function calculateDynamicTotal(amount: number, currency: string) {
-  // 1. AUTO-CONVERT: If currency is USD, treat it as NGN for the payment calculation
   let effectiveAmount = amount;
+  
+  // 1. AUTO-CONVERT using the rate
   if (currency === "USD") {
-     effectiveAmount = amount * USD_TO_NGN_RATE;
+     effectiveAmount = amount * CURRENT_MARKET_RATE;
   }
 
-  // 2. Paystack NGN Formula: (Amount + ₦100) / (1 - 1.5%)
+  // 2. Paystack NGN Formula
   let flatFee = 100;
   const percentFee = 0.015;
   
   if (effectiveAmount < 2500) flatFee = 0;
   
-  // Calculate total charge to ensure you get the exact book price
   let totalToCharge = (effectiveAmount + flatFee) / (1 - percentFee);
-  
   return Math.ceil(totalToCharge); 
 }
 
@@ -30,31 +36,25 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { email, items, currency } = body;
 
-    console.log("1. Checkout Request:", { email, currency });
-
     if (!email || !items || items.length === 0) {
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
 
     await connectDB();
 
-    // 1. Calculate Your Revenue (In the Original Currency)
+    // 1. Calculate Your Revenue
     let revenueAmount = 0;
     items.forEach((item: any) => {
       const price = currency === "NGN" ? item.priceNGN : item.priceUSD;
-      if (!price) throw new Error(`Price missing for item: ${item.title}`);
       revenueAmount += price * (item.quantity || 1);
     });
 
-    console.log("2. Net Revenue (Your Share):", revenueAmount, currency);
-
-    // 2. Calculate Charge Amount (Force everything to NGN for payment success)
+    // 2. Get the Rate & Calculate Charge
+    const exchangeRateUsed = getExchangeRate(currency);
     const chargeAmountNGN = calculateDynamicTotal(revenueAmount, currency);
 
-    console.log("3. Total to Charge (NGN):", chargeAmountNGN);
-
     // 3. Create Order in DB
-    // We save the order as the ORIGINAL currency (USD/NGN) so your dashboard is accurate.
+    // IMPORTANT: We save 'exchangeRateUsed' so we know exactly what the dollar was worth today.
     const newOrder = await Order.create({
       customerEmail: email,
       customerName: email.split("@")[0],
@@ -65,11 +65,12 @@ export async function POST(req: Request) {
         quantity: i.quantity || 1,
       })),
       totalAmount: revenueAmount, 
-      currency: currency, // e.g. "USD"
+      currency: currency, 
+      exchangeRate: exchangeRateUsed, // <--- SAVED FOREVER
       status: "pending",
     });
 
-    // 4. Send to Paystack (ALWAYS IN NGN)
+    // 4. Send to Paystack
     if (!process.env.PAYSTACK_SECRET_KEY) {
       return NextResponse.json({ error: "Server Error: Missing Key" }, { status: 500 });
     }
@@ -77,12 +78,12 @@ export async function POST(req: Request) {
     const paystackUrl = "https://api.paystack.co/transaction/initialize";
     const payload = {
       email: email,
-      amount: chargeAmountNGN * 100, // Send the Converted NGN Kobo amount
-      currency: "NGN", // <--- FORCE NGN so Paystack doesn't reject it
+      amount: chargeAmountNGN * 100, 
+      currency: "NGN", 
       callback_url: `${process.env.NEXTAUTH_URL}/success`,
       metadata: {
         orderId: newOrder._id.toString(),
-        originalCurrency: currency // Track that they actually wanted to pay USD
+        originalCurrency: currency 
       },
     };
 
