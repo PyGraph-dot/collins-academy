@@ -10,15 +10,16 @@ import { useCart } from "@/store/cart";
 function SuccessContent() {
   const searchParams = useSearchParams();
   const reference = searchParams.get("reference");
-  const router = useRouter();
-  const { clearCart } = useCart();
+  const { clearCart, closeCart } = useCart(); // <--- Get closeCart
   
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<any>(null);
 
   useEffect(() => {
+    // 1. Force the cart drawer to close immediately
+    closeCart();
+
     if (!reference) {
-       // If no reference, just stop loading. The user might have stumbled here.
        setLoading(false);
        return;
     }
@@ -32,7 +33,8 @@ function SuccessContent() {
           setOrder(data.order);
           clearCart(); 
         } else {
-          alert("Payment verification failed. Please contact support.");
+          // Silent fail or alert
+          console.error("Payment verification failed");
         }
       } catch (error) {
         console.error(error);
@@ -42,7 +44,7 @@ function SuccessContent() {
     }
 
     verifyPayment();
-  }, [reference]);
+  }, [reference, closeCart, clearCart]);
 
   if (loading) {
     return (
@@ -100,6 +102,7 @@ function SuccessContent() {
                   href={item.productId.fileUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  download // <--- Hint to browser to download instead of open
                   className="flex items-center gap-2 bg-[#d4af37] text-black px-5 py-3 rounded-lg font-bold text-sm hover:bg-white transition-colors"
                 >
                   <Download size={18} /> Download
@@ -117,7 +120,8 @@ function SuccessContent() {
         </div>
       </div>
 
-      <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mt-12 transition-colors">
+      {/* FIX: Changed Link to /library */}
+      <Link href="/library" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mt-12 transition-colors">
          Return to Library <ArrowRight size={16} />
       </Link>
     </div>

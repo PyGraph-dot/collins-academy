@@ -16,8 +16,9 @@ interface CartStore {
   isOpen: boolean;
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
-  clearCart: () => void; // <--- WE ADDED THIS LINE (The missing Type)
+  clearCart: () => void;
   toggleCart: () => void;
+  closeCart: () => void; // <--- NEW FUNCTION
   setCurrency: (currency: 'NGN' | 'USD') => void;
   total: () => number;
 }
@@ -32,7 +33,10 @@ export const useCart = create<CartStore>()(
       addItem: (item) => {
         const currentItems = get().items;
         const exists = currentItems.find((i) => i._id === item._id);
-        if (exists) return; // Don't add duplicates
+        if (exists) {
+            set({ isOpen: true }); // Just open cart if already added
+            return; 
+        }
         set({ items: [...currentItems, item], isOpen: true });
       },
 
@@ -40,12 +44,14 @@ export const useCart = create<CartStore>()(
         set({ items: get().items.filter((i) => i._id !== id) });
       },
 
-      // <--- WE ADDED THIS FUNCTION
       clearCart: () => {
         set({ items: [] });
       },
 
       toggleCart: () => set({ isOpen: !get().isOpen }),
+      
+      // <--- NEW: Force close function
+      closeCart: () => set({ isOpen: false }),
 
       setCurrency: (currency) => set({ currency }),
 
@@ -55,7 +61,7 @@ export const useCart = create<CartStore>()(
       },
     }),
     {
-      name: "cart-storage", // Save to localStorage so cart survives refresh
+      name: "cart-storage",
     }
   )
 );
