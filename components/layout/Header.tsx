@@ -13,24 +13,41 @@ export default function Header() {
   const pathname = usePathname();
   const { items, toggleCart } = useCart();
 
-  // Handle Scroll Effect
+  // 1. PERFORMANCE: Throttled Scroll Handler
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // 2. UX: Mobile Scroll Lock (Prevents background scrolling when menu is open)
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => { document.body.style.overflow = "unset"; };
+  }, [mobileMenuOpen]);
 
   // Close mobile menu when route changes
   useEffect(() => {
     if (mobileMenuOpen) setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Hide Header on Admin/Login
   if (pathname?.startsWith("/admin") || pathname === "/login") {
     return null;
   }
 
-  // NAVIGATION LINKS
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Shop", href: "/shop" },
@@ -42,40 +59,45 @@ export default function Header() {
   return (
     <>
       {/* HEADER WRAPPER */}
-      <motion.header
-        initial={{ y: -100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-           isScrolled ? "bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5 py-4" : "bg-transparent py-6"
+      <header
+        className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 h-20 flex items-center ${
+           isScrolled 
+             ? "bg-[#0a0a0a]/90 backdrop-blur-md border-b border-white/10" 
+             : "bg-transparent border-b border-transparent"
         }`}
       >
-        {/* INNER CONTAINER - Aligned with your content grid (max-w-7xl) */}
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+        {/* INNER CONTAINER - Uses GRID to prevent centering overlaps */}
+        <div className="w-full max-w-7xl mx-auto px-6 grid grid-cols-[auto_1fr_auto] md:grid-cols-3 items-center">
           
-          {/* 1. LOGO (Far Left) */}
-          <Link href="/" className="font-serif text-xl tracking-tight text-white hover:text-[#d4af37] transition-colors relative z-10 font-bold">
-            COLLINS<span className="text-[#d4af37]">.</span>
-          </Link>
+          {/* 1. LOGO (Far Left - justify-self-start) */}
+          <div className="justify-self-start z-20">
+            <Link 
+              href="/" 
+              className="font-serif text-xl tracking-tight text-white hover:text-[#d4af37] transition-colors font-bold block py-2"
+              aria-label="Collins Academy Home"
+            >
+              COLLINS<span className="text-[#d4af37]">.</span>
+            </Link>
+          </div>
 
-          {/* 2. DESKTOP NAVIGATION (Centered) */}
-          <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+          {/* 2. DESKTOP NAVIGATION (Center - justify-self-center) */}
+          <nav className="hidden md:flex justify-self-center items-center gap-8">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link 
                   key={link.href} 
                   href={link.href}
-                  className="relative text-sm font-medium uppercase tracking-widest transition-all duration-300 group"
+                  className="relative text-sm font-medium uppercase tracking-widest transition-all duration-300 group py-2"
                 >
                   <span className={`relative z-10 ${isActive ? "text-[#d4af37]" : "text-gray-400 group-hover:text-white"}`}>
                     {link.name}
                   </span>
-                  {/* Underline Dot for Active State */}
+                  {/* Visual Feedback: Active Dot */}
                   {isActive && (
                      <motion.span 
                         layoutId="nav-dot"
-                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#d4af37] rounded-full"
+                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#d4af37] rounded-full"
                      />
                   )}
                 </Link>
@@ -83,26 +105,30 @@ export default function Header() {
             })}
           </nav>
 
-          {/* 3. CART & MENU (Far Right) */}
-          <div className="flex items-center gap-6 relative z-10">
+          {/* 3. CART & MENU (Far Right - justify-self-end) */}
+          <div className="justify-self-end flex items-center gap-4 z-20">
             
-            {/* Cart Trigger */}
+            {/* Cart Trigger - Accessible Touch Target */}
             <button 
-                className="relative group text-white hover:text-[#d4af37] transition-colors"
-                onClick={toggleCart} 
+                className="relative group text-white hover:text-[#d4af37] transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                onClick={toggleCart}
+                aria-label={`View Cart, ${items.length} items`}
             >
-              <ShoppingBag size={20} />
+              <ShoppingBag size={22} />
               {items.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-[#d4af37] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="absolute top-1 right-1 bg-[#d4af37] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
                   {items.length}
                 </span>
               )}
             </button>
 
-            {/* Mobile Menu Button - FIXED: NO STACKING */}
+            {/* Mobile Menu Button - Accessible Touch Target */}
             <button 
-              className="md:hidden text-white hover:text-[#d4af37] transition-colors w-6 h-6 flex items-center justify-center"
+              className="md:hidden text-white hover:text-[#d4af37] transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
             >
               <AnimatePresence mode="wait" initial={false}>
                 {mobileMenuOpen ? (
@@ -130,17 +156,20 @@ export default function Header() {
             </button>
           </div>
         </div>
-      </motion.header>
+      </header>
 
-      {/* MOBILE MENU FULL SCREEN OVERLAY */}
+      {/* MOBILE MENU OVERLAY */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
+            id="mobile-menu"
+            role="dialog"
+            aria-modal="true"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 bg-[#0a0a0a] flex flex-col items-center justify-center space-y-8 md:hidden"
+            className="fixed inset-0 z-40 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center space-y-8 md:hidden"
           >
             {navLinks.map((link, i) => (
               <motion.div
@@ -153,7 +182,7 @@ export default function Header() {
                 <Link 
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`text-3xl font-serif ${pathname === link.href ? "text-[#d4af37]" : "text-white"}`}
+                  className={`text-2xl sm:text-3xl font-serif py-2 block ${pathname === link.href ? "text-[#d4af37]" : "text-white"}`}
                 >
                   {link.name}
                 </Link>
