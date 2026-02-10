@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ShoppingBag, Menu, X } from "lucide-react";
@@ -44,17 +44,29 @@ export default function Header() {
     if (mobileMenuOpen) setMobileMenuOpen(false);
   }, [pathname]);
 
+  // Prevent scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [mobileMenuOpen]);
+
   if (pathname?.startsWith("/admin") || pathname === "/login") {
     return null;
   }
 
-  const navLinks = [
+  const navLinks = useMemo(() => [
     { name: "Home", href: "/" },
     { name: "Shop", href: "/shop" },
     { name: "About", href: "/about" },
     { name: "Academy", href: "/academy" },
     { name: "My Library", href: "/library" },
-  ];
+  ], []);
 
   return (
     <>
@@ -182,7 +194,7 @@ export default function Header() {
                 <Link 
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`text-2xl sm:text-3xl font-serif py-2 block ${pathname === link.href ? "text-[#d4af37]" : "text-white"}`}
+                  className={`text-2xl md:text-3xl font-serif ${pathname === link.href ? "text-[#d4af37]" : "text-white"}`}
                 >
                   {link.name}
                 </Link>
