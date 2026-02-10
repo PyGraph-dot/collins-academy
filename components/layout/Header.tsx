@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ShoppingBag, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/store/cart";
+import { ModeToggle } from "@/components/ui/ModeToggle"; // <--- Import the toggle
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -13,9 +14,8 @@ export default function Header() {
   const pathname = usePathname();
   const { items, toggleCart } = useCart();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const firstNavLinkRef = useRef<HTMLAnchorElement>(null);
 
-  // 1. PERFORMANCE: Throttled Scroll Handler
+  // Scroll Handler
   useEffect(() => {
     let ticking = false;
     const handleScroll = () => {
@@ -31,78 +31,55 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 2. UX: Mobile Scroll Lock + Focus Management
+  // Lock Body Scroll on Mobile Menu
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = "hidden";
-      document.documentElement.style.overflow = "hidden";
-      // Move focus to first nav link when menu opens
-      setTimeout(() => firstNavLinkRef.current?.focus(), 100);
     } else {
       document.body.style.overflow = "unset";
-      document.documentElement.style.overflow = "unset";
-      // Return focus to menu button when menu closes
-      menuButtonRef.current?.focus();
     }
-    return () => {
-      document.body.style.overflow = "unset";
-      document.documentElement.style.overflow = "unset";
-    };
+    return () => { document.body.style.overflow = "unset"; };
   }, [mobileMenuOpen]);
 
-  // ESC Key Handler: Close menu on ESC press (WCAG 2.1 requirement)
+  // Close menu on route change
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && mobileMenuOpen) {
-        setMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mobileMenuOpen]);
-
-  // Close mobile menu when route changes
-  useEffect(() => {
-    if (mobileMenuOpen) setMobileMenuOpen(false);
+    setMobileMenuOpen(false);
   }, [pathname]);
 
-  if (pathname?.startsWith("/admin") || pathname === "/login") {
-    return null;
-  }
+  if (pathname?.startsWith("/admin") || pathname === "/login") return null;
 
-  const navLinks = useMemo(() => [
+  const navLinks = [
     { name: "Home", href: "/" },
     { name: "Shop", href: "/shop" },
     { name: "About", href: "/about" },
     { name: "Academy", href: "/academy" },
     { name: "My Library", href: "/library" },
-  ], []);
+  ];
 
   return (
     <>
-      {/* HEADER WRAPPER */}
       <header
-        className={`fixed top-0 left-0 w-full z-50 h-20 flex items-center ${
+        className={`fixed top-0 left-0 w-full z-50 h-20 flex items-center transition-all duration-300 ${
            isScrolled 
-             ? "bg-[#0a0a0a]/90 backdrop-blur-sm md:backdrop-blur-md border-b border-white/10" 
+             // UPDATED: Use dynamic bg-background/90 and border-border
+             ? "bg-background/90 backdrop-blur-md border-b border-border shadow-sm" 
              : "bg-transparent border-b border-transparent"
-        } transition-all duration-300`}
+        }`}
       >
-        {/* INNER CONTAINER - Uses GRID to prevent centering overlaps */}
         <div className="w-full max-w-7xl mx-auto px-6 md:px-8 lg:px-12 grid grid-cols-[auto_1fr_auto] items-center">
           
-          {/* 1. LOGO (Far Left - justify-self-start) */}
+          {/* 1. LOGO */}
           <div className="justify-self-start z-20">
             <Link 
               href="/" 
-              className="font-serif text-lg md:text-xl tracking-tight text-white hover:text-[#d4af37] transition-colors font-bold block py-2"
+              className="font-serif text-lg md:text-xl tracking-tight text-foreground hover:text-gold transition-colors font-bold block py-2"
               aria-label="Collins Academy Home"
             >
-              COLLINS<span className="text-[#d4af37]">.</span>
+              COLLINS<span className="text-gold">.</span>
             </Link>
           </div>
 
-          {/* 2. DESKTOP NAVIGATION (Center - justify-self-center) */}
+          {/* 2. DESKTOP NAV */}
           <nav className="hidden md:flex justify-self-center items-center gap-6 md:gap-8">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -112,14 +89,13 @@ export default function Header() {
                   href={link.href}
                   className="relative text-sm font-medium uppercase tracking-widest transition-all duration-300 group py-2"
                 >
-                  <span className={`relative z-10 ${isActive ? "text-[#d4af37]" : "text-gray-400 group-hover:text-white"}`}>
+                  <span className={`relative z-10 ${isActive ? "text-gold" : "text-muted-foreground group-hover:text-foreground"}`}>
                     {link.name}
                   </span>
-                  {/* Visual Feedback: Active Dot */}
                   {isActive && (
                      <motion.span 
                         layoutId="nav-dot"
-                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#d4af37] rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]"
+                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-gold rounded-full shadow-[0_0_8px_var(--gold)]"
                      />
                   )}
                 </Link>
@@ -127,40 +103,42 @@ export default function Header() {
             })}
           </nav>
 
-          {/* 3. CART & MENU (Far Right - justify-self-end) */}
-          <div className="justify-self-end flex items-center gap-4 z-20">
+          {/* 3. RIGHT ACTIONS (Cart + Toggle + Menu) */}
+          <div className="justify-self-end flex items-center gap-3 z-20">
             
-            {/* Cart Trigger - Accessible Touch Target */}
+            {/* Theme Toggle (Hidden on super small screens if needed, usually fine) */}
+            <div className="hidden sm:block">
+              <ModeToggle />
+            </div>
+
+            {/* Cart Button */}
             <button 
-                className="relative group text-white hover:text-[#d4af37] transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="relative group text-foreground hover:text-gold transition-colors p-2 flex items-center justify-center"
                 onClick={toggleCart}
-                aria-label={`View Cart, ${items.length} items`}
+                aria-label="View Cart"
             >
               <ShoppingBag size={22} />
               {items.length > 0 && (
-                <span className="absolute top-1 right-1 bg-[#d4af37] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                <span className="absolute top-0 right-0 bg-gold text-charcoal-950 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
                   {items.length}
                 </span>
               )}
             </button>
 
-            {/* Mobile Menu Button - Accessible Touch Target */}
+            {/* Mobile Menu Trigger */}
             <button 
               ref={menuButtonRef}
-              className="md:hidden text-white hover:text-[#d4af37] transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/5 rounded-lg"
+              className="md:hidden text-foreground hover:text-gold transition-colors p-2 flex items-center justify-center"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"}
-              aria-expanded={mobileMenuOpen}
-              aria-controls="mobile-menu"
+              aria-label="Menu"
             >
-              <AnimatePresence mode="wait" initial={false}>
+              <AnimatePresence mode="wait">
                 {mobileMenuOpen ? (
                   <motion.div
                     key="close"
                     initial={{ rotate: -90, opacity: 0 }}
                     animate={{ rotate: 0, opacity: 1 }}
                     exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
                   >
                     <X size={24} />
                   </motion.div>
@@ -170,7 +148,6 @@ export default function Header() {
                     initial={{ rotate: 90, opacity: 0 }}
                     animate={{ rotate: 0, opacity: 1 }}
                     exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
                   >
                     <Menu size={24} />
                   </motion.div>
@@ -185,53 +162,41 @@ export default function Header() {
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            id="mobile-menu"
-            role="dialog"
-            aria-modal="true"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 bg-black/95 backdrop-blur-sm md:backdrop-blur-md flex flex-col items-center justify-center space-y-8 md:hidden"
+            // UPDATED: Dynamic background (Paper in light mode, Void in dark mode)
+            className="fixed inset-0 z-40 bg-background/95 backdrop-blur-md flex flex-col items-center justify-center space-y-8 md:hidden"
           >
+            {/* Mobile Toggle (Since we hid it in header on small screens) */}
+            <div className="absolute top-24">
+              <ModeToggle />
+            </div>
+
             {navLinks.map((link, i) => (
               <motion.div
                 key={link.href}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.1 }}
-                className="relative"
               >
                 <Link 
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  ref={i === 0 ? firstNavLinkRef : null}
-                  className={`text-2xl font-serif transition-all duration-300 relative ${
+                  className={`text-3xl font-serif transition-colors ${
                     pathname === link.href 
-                      ? "text-[#d4af37]" 
-                      : "text-white hover:text-[#d4af37]"
+                      ? "text-gold" 
+                      : "text-foreground hover:text-gold"
                   }`}
                 >
                   {link.name}
-                  {pathname === link.href && (
-                    <motion.span 
-                      layoutId="mobile-nav-dot"
-                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#d4af37] rounded-full shadow-[0_0_8px_rgba(212,175,55,0.6)]"
-                    />
-                  )}
                 </Link>
               </motion.div>
             ))}
-
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: navLinks.length * 0.1 + 0.1 }}
-              className="mt-12 w-12 h-[1px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent shadow-[0_0_8px_rgba(212,175,55,0.4)]"
-            />
             
-            <p className="text-gray-500 text-xs tracking-[0.2em] uppercase">The Collins Academy</p>
+            <div className="mt-12 w-12 h-[1px] bg-gold/50" />
+            <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">The Collins Academy</p>
           </motion.div>
         )}
       </AnimatePresence>
