@@ -18,7 +18,7 @@ interface Product {
 
 interface Stats {
   totalProducts: number;
-  totalRevenue: number; // <--- Changed from activeProducts
+  totalRevenue: number;
   totalOrders: number;
 }
 
@@ -79,9 +79,11 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-8 pt-24">
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-6 md:p-8 pt-24">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-10">
+        
+        {/* HEADER: Stack vertically on mobile, row on desktop */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
           <div>
             <h1 className="text-3xl font-serif text-white">Admin Dashboard</h1>
             <p className="text-gray-400 text-sm mt-1">Manage your books and products</p>
@@ -89,16 +91,16 @@ export default function AdminDashboard() {
           
           <Link 
             href="/admin/add" 
-            className="flex items-center gap-2 bg-[#d4af37] text-black px-6 py-3 rounded-full font-bold hover:bg-white transition-colors"
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-[#d4af37] text-black px-6 py-3 rounded-xl md:rounded-full font-bold hover:bg-white transition-colors"
           >
             <Plus size={18} /> Add New Product
           </Link>
         </div>
 
-        {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Card 1: Total Products */}
-          <div className="bg-[#111] border border-white/10 p-6 rounded-xl flex items-center gap-4">
+        {/* STATS: Grid 1-col mobile -> 3-col desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+          {/* Card 1 */}
+          <div className="bg-[#111] border border-white/10 p-5 rounded-xl flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500">
               <Package size={24} />
             </div>
@@ -108,8 +110,8 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Card 2: Revenue (UPDATED) */}
-          <div className="bg-[#111] border border-white/10 p-6 rounded-xl flex items-center gap-4">
+          {/* Card 2 */}
+          <div className="bg-[#111] border border-white/10 p-5 rounded-xl flex items-center gap-4">
             <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center text-green-500">
               <DollarSign size={24} />
             </div>
@@ -121,8 +123,8 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Card 3: Total Orders */}
-          <div className="bg-[#111] border border-white/10 p-6 rounded-xl flex items-center gap-4">
+          {/* Card 3 */}
+          <div className="bg-[#111] border border-white/10 p-5 rounded-xl flex items-center gap-4">
             <div className="w-12 h-12 bg-[#d4af37]/10 rounded-full flex items-center justify-center text-[#d4af37]">
               <ShoppingBag size={24} />
             </div>
@@ -133,8 +135,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Products Table */}
-        <div className="bg-[#111] rounded-xl border border-white/10 overflow-hidden">
+        {/* --- DESKTOP VIEW (The Table - Hidden on Mobile) --- */}
+        <div className="hidden md:block bg-[#111] rounded-xl border border-white/10 overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white/5 text-gray-400 text-xs uppercase">
@@ -154,7 +156,7 @@ export default function AdminDashboard() {
                   <tr key={product._id} className="hover:bg-white/5 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-16 bg-gray-800 rounded overflow-hidden relative">
+                        <div className="w-12 h-16 bg-gray-800 rounded overflow-hidden relative border border-white/5">
                           {product.image ? (
                             <Image src={product.image} alt={product.title} fill className="object-cover" />
                           ) : (
@@ -190,6 +192,45 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
+
+        {/* --- MOBILE VIEW (The Cards - Hidden on Desktop) --- */}
+        <div className="md:hidden space-y-4">
+          {products.length === 0 ? (
+             <div className="text-center py-10 text-gray-500 border border-dashed border-white/10 rounded-xl">No products found.</div>
+          ) : (
+            products.map((product) => (
+              <div key={product._id} className="bg-[#111] border border-white/10 rounded-xl p-4 flex gap-4">
+                 {/* Image */}
+                 <div className="w-20 h-28 bg-black rounded-lg overflow-hidden border border-white/5 flex-shrink-0 relative">
+                     {product.image && <Image src={product.image} alt={product.title} fill className="object-cover" />}
+                 </div>
+
+                 {/* Info & Actions */}
+                 <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                       <h3 className="font-serif text-white text-lg leading-tight mb-2 line-clamp-2">{product.title}</h3>
+                       <div className="flex gap-3 text-sm text-gray-400 font-mono">
+                          <span>₦{product.priceNGN.toLocaleString()}</span>
+                          <span className="w-px h-4 bg-gray-700"></span>
+                          <span>${product.priceUSD}</span>
+                       </div>
+                    </div>
+
+                    {/* Mobile Action Buttons */}
+                    <div className="flex gap-2 mt-3">
+                       <Link href={`/admin/edit/${product._id}`} className="flex-1 bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                          <Edit size={14} /> Edit
+                       </Link>
+                       <button onClick={() => deleteProduct(product._id)} className="bg-red-500/10 text-red-400 py-2 px-3 rounded-lg hover:bg-red-500/20 transition-colors">
+                          <Trash2 size={14} />
+                       </button>
+                    </div>
+                 </div>
+              </div>
+            ))
+          )}
+        </div>
+
       </div>
     </div>
   );
