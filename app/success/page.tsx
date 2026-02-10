@@ -6,14 +6,15 @@ import { Loader2, CheckCircle, Download, ArrowRight, BookOpen } from "lucide-rea
 import Link from "next/link";
 import { useCart } from "@/store/cart";
 
-// 1. The Component that reads the URL (Moved inside)
+// 1. The Component that reads the URL
 function SuccessContent() {
   const searchParams = useSearchParams();
   const reference = searchParams.get("reference");
-  const { clearCart, closeCart } = useCart(); // <--- Get closeCart
+  const { clearCart, closeCart } = useCart(); 
   
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<any>(null);
+  const [downloading, setDownloading] = useState<string | null>(null); // Track which file is downloading
 
   useEffect(() => {
     // 1. Force the cart drawer to close immediately
@@ -32,9 +33,6 @@ function SuccessContent() {
         if (data.success) {
           setOrder(data.order);
           clearCart(); 
-        } else {
-          // Silent fail or alert
-          console.error("Payment verification failed");
         }
       } catch (error) {
         console.error(error);
@@ -45,6 +43,35 @@ function SuccessContent() {
 
     verifyPayment();
   }, [reference, closeCart, clearCart]);
+
+  // --- NEW: Force Download & Rename Function ---
+  const handleDownload = async (url: string, title: string) => {
+    try {
+      setDownloading(title);
+      // 1. Fetch the file as a "blob" (raw data)
+      const response = await fetch(url);
+      const blob = await response.blob();
+      
+      // 2. Create a temporary link to that blob
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${title}.pdf`; // <--- This forces the browser to rename it
+      
+      // 3. Click it programmatically
+      document.body.appendChild(link);
+      link.click();
+      
+      // 4. Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error("Download failed, opening in new tab", e);
+      window.open(url, '_blank');
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -98,15 +125,14 @@ function SuccessContent() {
               </div>
 
               {item.productId?.fileUrl ? (
-                <a 
-                  href={item.productId.fileUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  download // <--- Hint to browser to download instead of open
-                  className="flex items-center gap-2 bg-[#d4af37] text-black px-5 py-3 rounded-lg font-bold text-sm hover:bg-white transition-colors"
+                <button 
+                  onClick={() => handleDownload(item.productId.fileUrl, item.title)}
+                  disabled={downloading === item.title}
+                  className="flex items-center gap-2 bg-[#d4af37] text-black px-5 py-3 rounded-lg font-bold text-sm hover:bg-white transition-colors disabled:opacity-50"
                 >
-                  <Download size={18} /> Download
-                </a>
+                  {downloading === item.title ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
+                  <span>{downloading === item.title ? "Saving..." : "Download"}</span>
+                </button>
               ) : (
                 <span className="text-xs text-red-500">File not available</span>
               )}
@@ -120,7 +146,6 @@ function SuccessContent() {
         </div>
       </div>
 
-      {/* FIX: Changed Link to /library */}
       <Link href="/library" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mt-12 transition-colors">
          Return to Library <ArrowRight size={16} />
       </Link>

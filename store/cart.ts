@@ -18,7 +18,7 @@ interface CartStore {
   removeItem: (id: string) => void;
   clearCart: () => void;
   toggleCart: () => void;
-  closeCart: () => void; // <--- NEW FUNCTION
+  closeCart: () => void; // <--- This function is required for Success Page
   setCurrency: (currency: 'NGN' | 'USD') => void;
   total: () => number;
 }
@@ -50,7 +50,7 @@ export const useCart = create<CartStore>()(
 
       toggleCart: () => set({ isOpen: !get().isOpen }),
       
-      // <--- NEW: Force close function
+      // <--- Forces the drawer closed (Used in Success Page)
       closeCart: () => set({ isOpen: false }),
 
       setCurrency: (currency) => set({ currency }),

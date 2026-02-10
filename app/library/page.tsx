@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Loader2, Download, BookOpen, AlertCircle } from "lucide-react";
+import { Search, Loader2, Download, BookOpen, AlertCircle, ShoppingBag } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function LibraryPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [books, setBooks] = useState<any[] | null>(null);
   const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,12 +32,34 @@ export default function LibraryPage() {
       if (data.books) {
         setBooks(data.books);
       } else {
+        // Fallback error, though we handle empty array below
         setError("No purchases found for this email.");
       }
     } catch (err) {
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- Force Download Function (Same as Success Page) ---
+  const handleDownload = async (url: string, title: string) => {
+    try {
+      setDownloading(title);
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${title}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      window.open(url, '_blank');
+    } finally {
+      setDownloading(null);
     }
   };
 
@@ -86,8 +110,18 @@ export default function LibraryPage() {
             </div>
 
             {books.length === 0 ? (
-               <div className="text-center py-12 border border-dashed border-white/10 rounded-xl">
-                 <p className="text-gray-500">No books found for this email.</p>
+               // --- NEW: Better "Empty State" UI ---
+               <div className="text-center py-16 border border-dashed border-white/10 rounded-xl bg-white/5">
+                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-500">
+                    <BookOpen size={24} />
+                 </div>
+                 <h3 className="text-lg font-serif text-white mb-2">No library found</h3>
+                 <p className="text-gray-500 text-sm max-w-xs mx-auto mb-8">
+                   We couldn't find any purchased books for <span className="text-white font-mono">{email}</span>.
+                 </p>
+                 <Link href="/shop" className="inline-flex items-center gap-2 bg-[#d4af37] text-black px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-white transition-colors">
+                    <ShoppingBag size={16} /> Browse Store
+                 </Link>
                </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -113,18 +147,18 @@ export default function LibraryPage() {
                       </p>
                       
                       {book.fileUrl ? (
-                        <a 
-                          href={book.fileUrl} 
-                          target="_blank" 
-                          className="inline-flex items-center gap-2 text-[#d4af37] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors border border-[#d4af37]/20 px-4 py-2 rounded-lg hover:bg-[#d4af37] hover:text-black"
+                        <button 
+                          onClick={() => handleDownload(book.fileUrl, book.title)}
+                          disabled={downloading === book.title}
+                          className="inline-flex items-center gap-2 text-[#d4af37] text-xs font-bold uppercase tracking-widest hover:text-white transition-colors border border-[#d4af37]/20 px-4 py-2 rounded-lg hover:bg-[#d4af37] hover:text-black disabled:opacity-50"
                         >
-                          <Download size={14} /> Download PDF
-                        </a>
+                          {downloading === book.title ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />}
+                          <span>{downloading === book.title ? "Saving..." : "Download PDF"}</span>
+                        </button>
                       ) : (
                         <span className="text-xs text-red-500">File Unavailable</span>
                       )}
                     </div>
-
                   </div>
                 ))}
               </div>
