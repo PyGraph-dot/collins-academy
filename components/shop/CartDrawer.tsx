@@ -4,60 +4,73 @@ import { useState } from "react";
 import { useCart } from "@/store/cart";
 import { X, ShoppingBag, Trash2, Loader2, CreditCard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Script from "next/script"; //
+import Script from "next/script";
 
 export default function CartDrawer() {
   const { items, isOpen, toggleCart, removeItem, currency, setCurrency, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
 
-  // Calculate Total
   const totalAmount = items.reduce((acc, item) => {
     const price = currency === 'NGN' ? item.priceNGN : item.priceUSD;
     return acc + price;
   }, 0);
 
-  // --- PAYSTACK PAYMENT HANDLER ---
+  // --- ROBUST PAYSTACK HANDLER ---
   const handlePaystackPayment = () => {
     if (!email) {
       alert("Please enter your email address to receive your files.");
       return;
     }
 
+    // 1. Check if API Key exists
+    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey) {
+      alert("Error: Paystack Public Key is missing in environment variables.");
+      return;
+    }
+
+    // 2. Check if Script is loaded
+    if (typeof (window as any).PaystackPop === 'undefined') {
+      alert("Paystack is still loading. Please wait 2 seconds and try again.");
+      return;
+    }
+
     setLoading(true);
 
-    // 1. Initialize Paystack Popup
-    const paystack = new (window as any).PaystackPop();
-    
-    paystack.newTransaction({
-      key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY, // Make sure this is in your .env.local
-      email: email,
-      amount: totalAmount * 100, // Paystack expects amount in kobo/cents
-      currency: currency,
-      metadata: {
-        custom_fields: [
-          {
-             display_name: "Items",
-             variable_name: "items",
-             value: items.map(i => i.title).join(", ")
-          }
-        ]
-      },
-      onSuccess: (transaction: any) => { 
-        // 2. Payment Successful -> Verify & Deliver
-        verifyTransaction(transaction.reference);
-      },
-      onCancel: () => {
-        setLoading(false);
-        // Optional: alert("Transaction cancelled.");
-      }
-    });
+    try {
+      const paystack = new (window as any).PaystackPop();
+      
+      paystack.newTransaction({
+        key: publicKey,
+        email: email,
+        amount: totalAmount * 100, // Kobo
+        currency: currency,
+        metadata: {
+          custom_fields: [
+            {
+               display_name: "Items",
+               variable_name: "items",
+               value: items.map(i => i.title).join(", ")
+            }
+          ]
+        },
+        onSuccess: (transaction: any) => { 
+          verifyTransaction(transaction.reference);
+        },
+        onCancel: () => {
+          setLoading(false);
+        }
+      });
+    } catch (error) {
+      console.error("Paystack Init Error:", error);
+      alert("Failed to load payment window. Please refresh.");
+      setLoading(false);
+    }
   };
 
-  // --- VERIFY & DELIVER (The Backend Step) ---
   const verifyTransaction = async (reference: string) => {
     try {
-      // We send the reference + items to the backend to fulfill the order
       const res = await fetch("/api/verify-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,14 +87,14 @@ export default function CartDrawer() {
 
       if (res.ok) {
         alert("Payment Successful! Check your email for the download links.");
-        clearCart(); // Clear the cart
-        toggleCart(); // Close the drawer
+        clearCart();
+        toggleCart();
       } else {
         alert("Payment verified but order failed: " + data.message);
       }
     } catch (error) {
       console.error("Verification Error:", error);
-      alert("Payment successful, but network error occurred confirming order. Please contact support.");
+      alert("Payment successful, but network error occurred confirming order.");
     } finally {
       setLoading(false);
     }
@@ -89,13 +102,12 @@ export default function CartDrawer() {
 
   return (
     <>
-      {/* Load Paystack Script Lazy */}
-      <Script src="https://js.paystack.co/v1/inline.js" strategy="lazyOnload" />
+      {/* CHANGED: Use strategy="beforeInteractive" to ensure it loads fast */}
+      <Script src="https://js.paystack.co/v1/inline.js" strategy="beforeInteractive" />
 
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Dark Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
@@ -104,7 +116,6 @@ export default function CartDrawer() {
               className="fixed inset-0 bg-black/80 z-[60] backdrop-blur-sm"
             />
             
-            {/* The Drawer Panel */}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
@@ -112,7 +123,6 @@ export default function CartDrawer() {
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed right-0 top-0 h-full w-full max-w-md bg-[#111] border-l border-white/10 z-[70] p-6 flex flex-col shadow-2xl"
             >
-              {/* Header */}
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
                 <h2 className="text-2xl font-serif text-white flex items-center gap-2">
                   <ShoppingBag className="text-[#d4af37]" size={24} /> 
@@ -123,7 +133,6 @@ export default function CartDrawer() {
                 </button>
               </div>
 
-              {/* Currency Toggle */}
               <div className="flex bg-white/5 p-1 rounded-lg mb-6 w-fit">
                  {['NGN', 'USD'].map((curr) => (
                    <button
@@ -136,7 +145,6 @@ export default function CartDrawer() {
                  ))}
               </div>
 
-              {/* Cart Items */}
               <div className="flex-1 overflow-y-auto space-y-6">
                 {items.length === 0 ? (
                   <div className="text-center text-gray-500 mt-20">
@@ -145,7 +153,6 @@ export default function CartDrawer() {
                 ) : (
                   items.map((item) => (
                     <div key={item._id} className="flex gap-4 bg-white/5 p-3 rounded-lg border border-white/5">
-                      {/* Image */}
                       <div className="w-16 h-20 bg-gray-800 rounded-md overflow-hidden flex-shrink-0">
                          {item.image ? (
                            <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
@@ -169,7 +176,6 @@ export default function CartDrawer() {
                 )}
               </div>
 
-              {/* Footer / Checkout */}
               {items.length > 0 && (
                 <div className="border-t border-white/10 pt-6 mt-6 space-y-4">
                   <div className="flex justify-between items-center text-xl font-serif text-white">
@@ -179,7 +185,6 @@ export default function CartDrawer() {
                     </span>
                   </div>
 
-                  {/* Email Input for Receipt */}
                   <div>
                     <label className="text-xs uppercase text-gray-500 mb-1 block">Email for Receipt</label>
                     <input 
@@ -192,7 +197,7 @@ export default function CartDrawer() {
                   </div>
 
                   <button 
-                    onClick={handlePaystackPayment} // CHANGED to the Inline Handler
+                    onClick={handlePaystackPayment}
                     disabled={loading}
                     className="w-full py-4 bg-[#d4af37] hover:bg-[#b5952f] text-black font-bold uppercase tracking-wider transition-colors rounded-sm flex items-center justify-center gap-2 disabled:opacity-50"
                   >
