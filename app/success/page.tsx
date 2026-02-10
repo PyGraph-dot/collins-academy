@@ -14,6 +14,7 @@ function SuccessContent() {
   
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null); // Track which file is downloading
 
   useEffect(() => {
@@ -21,21 +22,34 @@ function SuccessContent() {
     closeCart();
 
     if (!reference) {
+       setError("No payment reference found. Please complete your payment first.");
        setLoading(false);
        return;
     }
 
     async function verifyPayment() {
       try {
+        console.log("🔄 Verifying payment with reference:", reference);
+        
         const res = await fetch(`/api/payment/verify?reference=${reference}`);
         const data = await res.json();
+        
+        console.log("📦 API Response:", data);
 
-        if (data.success) {
+        if (!res.ok) {
+          throw new Error(data.error || `Verification failed with status ${res.status}`);
+        }
+
+        if (data.success && data.order) {
+          console.log("✓ Order verified:", data.order);
           setOrder(data.order);
           clearCart(); 
+        } else {
+          throw new Error(data.error || "Unexpected response format from verification API");
         }
-      } catch (error) {
-        console.error(error);
+      } catch (err: any) {
+        console.error("❌ Verification error:", err);
+        setError(err.message || "Failed to verify payment. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -82,16 +96,47 @@ function SuccessContent() {
     );
   }
 
-  if (!order && !loading && !reference) {
+  // Show error if verification failed
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto text-center">
+        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500">
+          <CheckCircle size={40} />
+        </div>
+        <h1 className="text-4xl font-serif text-white mb-4">Payment Verification Failed</h1>
+        <p className="text-red-400 mb-8">{error}</p>
+        
+        <div className="bg-[#111] border border-red-500/30 rounded-2xl p-8 mb-8">
+          <p className="text-sm text-gray-400 mb-4">What you can do:</p>
+          <ul className="text-left text-sm text-gray-300 space-y-2">
+            <li>✓ Check that your payment was processed by your bank</li>
+            <li>✓ Contact support with your reference code if you have one</li>
+            <li>✓ Try accessing the success page again in a few moments</li>
+          </ul>
+        </div>
+
+        <div className="flex gap-4 justify-center">
+          <Link href="/shop" className="px-6 py-3 bg-[#d4af37] text-black font-bold rounded-lg hover:bg-white transition-colors">
+            Return to Shop
+          </Link>
+          <Link href="/" className="px-6 py-3 border border-white/20 text-white font-bold rounded-lg hover:border-[#d4af37] transition-colors">
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access restricted if no order
+  if (!order) {
       return (
           <div className="text-center py-20">
               <h1 className="text-2xl font-serif text-white mb-4">Access Restricted</h1>
-              <Link href="/shop" className="text-[#d4af37] underline">Return to Shop</Link>
+              <p className="text-gray-400 mb-6">This page requires a valid payment reference.</p>
+              <Link href="/shop" className="text-[#d4af37] underline hover:text-white transition-colors">Return to Shop</Link>
           </div>
-      )
+      );
   }
-
-  if (!order) return null;
 
   return (
     <div className="max-w-2xl mx-auto text-center">
