@@ -25,12 +25,12 @@ export default function Header() {
     if (mobileMenuOpen) setMobileMenuOpen(false);
   }, [pathname]);
 
-  // HIDE HEADER ON ADMIN & LOGIN PAGES
+  // Hide Header on Admin/Login
   if (pathname?.startsWith("/admin") || pathname === "/login") {
     return null;
   }
 
-  // UPDATED LINKS: Added Home & My Library
+  // UPDATED LINKS: Full List including Home & My Library
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Shop", href: "/shop" },
@@ -41,61 +41,59 @@ export default function Header() {
 
   return (
     <>
-      {/* FLOATING HEADER WRAPPER */}
+      {/* HEADER WRAPPER */}
       <motion.header
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-500 ${
-           isScrolled ? "pt-4" : "pt-8"
+        className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+           isScrolled ? "bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5 py-4" : "bg-transparent py-6"
         }`}
       >
-        {/* INNER CONTAINER - Matches your Grid Width (max-w-7xl) */}
-        <div 
-          className={`w-full max-w-7xl mx-auto px-6 transition-all duration-500 ease-in-out flex items-center justify-between
-            ${isScrolled 
-              ? "bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-2xl rounded-full py-3 mx-4" // Shrinks slightly when scrolled
-              : "bg-transparent border-transparent py-2" // Transparent & aligned when at top
-            }
-          `}
-        >
+        {/* INNER CONTAINER - Perfectly aligned with page content */}
+        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           
-          {/* 1. LOGO (Aligned Left - Matches Book Card) */}
+          {/* 1. LOGO (Far Left) */}
           <Link href="/" className="font-serif text-xl tracking-tight text-white hover:text-[#d4af37] transition-colors relative z-10 font-bold">
             COLLINS<span className="text-[#d4af37]">.</span>
           </Link>
 
           {/* 2. DESKTOP NAVIGATION (Centered) */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link 
                   key={link.href} 
                   href={link.href}
-                  className="relative px-4 py-2 rounded-full text-xs font-medium uppercase tracking-widest transition-all duration-300 group"
+                  className="relative text-sm font-medium uppercase tracking-widest transition-all duration-300 group"
                 >
                   <span className={`relative z-10 ${isActive ? "text-[#d4af37]" : "text-gray-400 group-hover:text-white"}`}>
                     {link.name}
                   </span>
-                  {/* Subtle Hover Glow */}
-                  <span className="absolute inset-0 bg-white/5 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300" />
+                  {/* Underline Dot for Active State */}
+                  {isActive && (
+                     <motion.span 
+                        layoutId="nav-dot"
+                        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#d4af37] rounded-full"
+                     />
+                  )}
                 </Link>
               );
             })}
           </nav>
 
-          {/* 3. CART & MENU (Aligned Right - Matches "View All Resources") */}
-          <div className="flex items-center gap-4 relative z-10">
+          {/* 3. CART & MENU (Far Right) */}
+          <div className="flex items-center gap-6 relative z-10">
             
             {/* Cart Trigger */}
             <button 
-                className="relative group p-2 hover:bg-white/10 rounded-full transition-colors"
+                className="relative group text-white hover:text-[#d4af37] transition-colors"
                 onClick={toggleCart} 
             >
-              <ShoppingBag size={20} className="text-white group-hover:text-[#d4af37] transition-colors" />
+              <ShoppingBag size={20} />
               {items.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#d4af37] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 bg-[#d4af37] text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                   {items.length}
                 </span>
               )}
@@ -103,7 +101,7 @@ export default function Header() {
 
             {/* Mobile Menu Button */}
             <button 
-              className="md:hidden p-2 text-white hover:text-[#d4af37] transition-colors"
+              className="md:hidden text-white hover:text-[#d4af37] transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -112,7 +110,7 @@ export default function Header() {
         </div>
       </motion.header>
 
-      {/* MOBILE MENU DROPDOWN */}
+      {/* MOBILE MENU FULL SCREEN OVERLAY */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
@@ -120,7 +118,7 @@ export default function Header() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 bg-[#0a0a0a]/98 backdrop-blur-xl flex flex-col items-center justify-center space-y-8 md:hidden"
+            className="fixed inset-0 z-40 bg-[#0a0a0a] flex flex-col items-center justify-center space-y-8 md:hidden"
           >
             {navLinks.map((link, i) => (
               <motion.div
@@ -133,7 +131,7 @@ export default function Header() {
                 <Link 
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`text-4xl font-serif ${pathname === link.href ? "text-[#d4af37]" : "text-white"}`}
+                  className={`text-3xl font-serif ${pathname === link.href ? "text-[#d4af37]" : "text-white"}`}
                 >
                   {link.name}
                 </Link>
