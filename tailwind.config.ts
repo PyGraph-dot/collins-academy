@@ -1,13 +1,13 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: ["class"], // <--- CRITICAL: Enables manual toggling
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/**/*.{js,ts,jsx,tsx,mdx}", // Fallback in case src was used
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  // Safelist forces these colors to exist even if Tailwind misses them in the scan
   safelist: [
     "bg-orange-600",
     "bg-blue-600",
@@ -18,7 +18,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // --- DYNAMIC THEME COLORS ---
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: "var(--card)",
+        "card-foreground": "var(--card-foreground)",
+        border: "var(--border)",
+        
+        // Custom Gold (Kept consistent)
         gold: {
+          DEFAULT: "var(--gold)", // Dynamic gold
           100: "#F9F1D8",
           400: "#E5C05F",
           500: "#D4AF37", 
