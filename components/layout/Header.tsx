@@ -30,40 +30,42 @@ export default function Header() {
     return null;
   }
 
-  // The Links you wanted back
+  // UPDATED LINKS: Added Home & My Library
   const navLinks = [
+    { name: "Home", href: "/" },
     { name: "Shop", href: "/shop" },
     { name: "About", href: "/about" },
     { name: "Academy", href: "/academy" },
+    { name: "My Library", href: "/library" },
   ];
 
   return (
     <>
-      {/* FLOATING HEADER */}
-      {/* We use 'fixed' to keep it at the top, but add padding/margin to make it float */}
+      {/* FLOATING HEADER WRAPPER */}
       <motion.header
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-500 ${
-           isScrolled ? "pt-4 px-4" : "pt-6 px-6"
+           isScrolled ? "pt-4" : "pt-8"
         }`}
       >
+        {/* INNER CONTAINER - Matches your Grid Width (max-w-7xl) */}
         <div 
-          className={`w-full max-w-7xl transition-all duration-500 ease-in-out flex items-center justify-between
+          className={`w-full max-w-7xl mx-auto px-6 transition-all duration-500 ease-in-out flex items-center justify-between
             ${isScrolled 
-              ? "bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-2xl rounded-full py-3 px-6" 
-              : "bg-transparent border-transparent py-2 px-0"
+              ? "bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-2xl rounded-full py-3 mx-4" // Shrinks slightly when scrolled
+              : "bg-transparent border-transparent py-2" // Transparent & aligned when at top
             }
           `}
         >
           
-          {/* 1. LOGO (Left Position) */}
+          {/* 1. LOGO (Aligned Left - Matches Book Card) */}
           <Link href="/" className="font-serif text-xl tracking-tight text-white hover:text-[#d4af37] transition-colors relative z-10 font-bold">
             COLLINS<span className="text-[#d4af37]">.</span>
           </Link>
 
-          {/* 2. DESKTOP NAVIGATION (Center - Restored Shop/About/Academy) */}
+          {/* 2. DESKTOP NAVIGATION (Centered) */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -83,7 +85,7 @@ export default function Header() {
             })}
           </nav>
 
-          {/* 3. CART & MENU (Right Position) */}
+          {/* 3. CART & MENU (Aligned Right - Matches "View All Resources") */}
           <div className="flex items-center gap-4 relative z-10">
             
             {/* Cart Trigger */}
