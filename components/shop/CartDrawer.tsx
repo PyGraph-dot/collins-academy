@@ -6,9 +6,16 @@ import { X, ShoppingBag, Trash2, Loader2, CreditCard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function CartDrawer() {
-  const { items, isOpen, toggleCart, removeItem, currency, total, setCurrency } = useCart();
+  // FIX 1: Removed 'total' from destructuring because we calculate it below
+  const { items, isOpen, toggleCart, removeItem, currency, setCurrency } = useCart();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+
+  // FIX 2: Calculate total here so it always works
+  const totalAmount = items.reduce((acc, item) => {
+    const price = currency === 'NGN' ? item.priceNGN : item.priceUSD;
+    return acc + price;
+  }, 0);
 
   const handleCheckout = async () => {
     if (!email) {
@@ -19,13 +26,14 @@ export default function CartDrawer() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/paystack/initialize", {
+      // FIX 3: Point to the actual API route we created
+      const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
-          amount: total(),
-          cartItems: items,
+          items, // Pass the items so the backend can calculate the total securely
+          currency,
         }),
       });
 
@@ -34,9 +42,10 @@ export default function CartDrawer() {
       if (data.url) {
         window.location.href = data.url; // Redirect to Paystack
       } else {
-        alert("Payment initialization failed.");
+        alert("Payment initialization failed: " + (data.error || "Unknown error"));
       }
     } catch (error) {
+      console.error(error);
       alert("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -96,7 +105,6 @@ export default function CartDrawer() {
                 </div>
               ) : (
                 items.map((item) => (
-                  // FIX: Removed "|| item.id" to satisfy TypeScript
                   <div key={item._id} className="flex gap-4 bg-white/5 p-3 rounded-lg border border-white/5">
                     {/* Image */}
                     <div className="w-16 h-20 bg-gray-800 rounded-md overflow-hidden flex-shrink-0">
@@ -108,13 +116,12 @@ export default function CartDrawer() {
                     </div>
                     
                     <div className="flex-1">
-                      <h3 className="font-medium text-white font-serif">{item.title}</h3>
+                      <h3 className="font-medium text-white font-serif line-clamp-2">{item.title}</h3>
                       <p className="text-[#d4af37] text-sm mt-1 font-bold">
                         {currency === 'NGN' ? '₦' : '$'}{currency === 'NGN' ? item.priceNGN.toLocaleString() : item.priceUSD}
                       </p>
                     </div>
                     
-                    {/* FIX: Removed "|| item.id" here too */}
                     <button onClick={() => removeItem(item._id)} className="text-gray-500 hover:text-red-400 p-2">
                       <Trash2 size={16} />
                     </button>
@@ -129,7 +136,7 @@ export default function CartDrawer() {
                 <div className="flex justify-between items-center text-xl font-serif text-white">
                   <span>Total</span>
                   <span className="text-[#d4af37]">
-                    {currency === 'NGN' ? '₦' : '$'}{total().toLocaleString()}
+                    {currency === 'NGN' ? '₦' : '$'}{totalAmount.toLocaleString()}
                   </span>
                 </div>
 
@@ -148,7 +155,7 @@ export default function CartDrawer() {
                 <button 
                   onClick={handleCheckout}
                   disabled={loading}
-                  className="w-full py-4 bg-[#d4af37] hover:bg-[#b5952f] text-black font-bold uppercase tracking-wider transition-colors rounded-sm flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-[#d4af37] hover:bg-[#b5952f] text-black font-bold uppercase tracking-wider transition-colors rounded-sm flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {loading ? <Loader2 className="animate-spin" /> : <><CreditCard size={18} /> Pay Now</>}
                 </button>
