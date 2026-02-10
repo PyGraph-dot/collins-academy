@@ -27,14 +27,11 @@ export async function GET(req: Request) {
 
     await connectDB();
 
-    // --- CRITICAL FIX: Check if Order Already Exists ---
-    // This prevents the "Server Error" when the page is refreshed
+    // 2. Check for Duplicate Order (Idempotency)
     const existingOrder = await Order.findOne({ transactionId: reference });
     
     if (existingOrder) {
-      console.log("Order already exists, returning it.");
-      
-      // We need to fetch product details again to populate the response for the UI
+      // Re-populate product details for the UI
       const itemIds = existingOrder.items.map((i: any) => i.productId);
       const products = await Product.find({ _id: { $in: itemIds } });
 
@@ -44,7 +41,7 @@ export async function GET(req: Request) {
           const product = products.find((p: any) => p._id.toString() === item.productId.toString());
           return {
              ...item,
-             title: product?.title || item.title, // Fallback to item title
+             title: product?.title || item.title,
              productId: {
                 image: product?.image,
                 fileUrl: product?.fileUrl
@@ -52,11 +49,10 @@ export async function GET(req: Request) {
           };
         })
       };
-      
       return NextResponse.json({ success: true, order: enrichedOrder });
     }
 
-    // --- Create New Order (Only if it doesn't exist) ---
+    // 3. Prepare New Order Data
     const meta = paystackData.data.metadata;
     const cartIds = meta?.cart_ids || [];
 
@@ -66,22 +62,36 @@ export async function GET(req: Request) {
 
     const products = await Product.find({ _id: { $in: cartIds } });
 
-    // Create the Order
+    // Determine Currency & Price
+    const currency = paystackData.data.currency; // NGN or USD
+
+    // 4. Create Order (FIXED FIELDS HERE)
     const newOrder = await Order.create({
+      // REQUIRED FIELD 1: customerName
+      // Fallback: Use the part of the email before the "@" since we don't ask for a name
+      customerName: paystackData.data.customer.email.split("@")[0],
+      
       customerEmail: paystackData.data.customer.email,
+      
       transactionId: reference,
-      amount: paystackData.data.amount / 100, // Convert kobo to currency
-      currency: paystackData.data.currency,
-      status: "completed",
+      
+      // REQUIRED FIELD 2: totalAmount (DB expects 'totalAmount', not 'amount')
+      totalAmount: paystackData.data.amount / 100, 
+      
+      currency: currency,
+      
+      status: "success", // Matches your schema comment "pending, success, failed"
+      
       items: products.map((p: any) => ({
-        productId: p._id, // Use the ID, not the whole object
+        productId: p._id,
         title: p.title,
-        price: p.priceUSD, // Or logic for NGN
+        // Dynamically choose the correct price based on the currency paid
+        price: currency === 'NGN' ? p.priceNGN : p.priceUSD, 
         quantity: 1
       }))
     });
 
-    // Format response for the frontend
+    // 5. Format Response
     const orderResponse = {
         _id: newOrder._id,
         customerEmail: newOrder.customerEmail,
@@ -99,7 +109,6 @@ export async function GET(req: Request) {
 
   } catch (error: any) {
     console.error("Verification Server Error:", error);
-    // Return the actual error message for debugging
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
