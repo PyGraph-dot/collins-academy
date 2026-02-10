@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Play, Volume2, ArrowRight } from "lucide-react";
 import MagneticButton from "@/components/ui/MagneticButton";
@@ -26,16 +26,49 @@ const textItem = {
 
 export default function Hero() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [dailyContent, setDailyContent] = useState<any>(null); // Store the data here
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // 1. FETCH THE DATA ON LOAD
+  useEffect(() => {
+    async function fetchDaily() {
+      try {
+        const res = await fetch("/api/daily");
+        const data = await res.json();
+        if (data && data.audioUrl) {
+           setDailyContent(data);
+        }
+      } catch (err) {
+        console.error("Failed to load daily audio");
+      }
+    }
+    fetchDaily();
+  }, []);
 
   const toggleAudio = () => {
-    setIsPlaying(!isPlaying);
-    if (!isPlaying) setTimeout(() => setIsPlaying(false), 3000);
+    if (!audioRef.current || !dailyContent?.audioUrl) return; // Don't play if no audio
+
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
   };
 
   return (
     // CHANGED: min-h-[100dvh] ensures it fits mobile browsers with address bars properly
     // ADDED: py-32 to prevent text hitting the top/bottom edges
     <section className="relative min-h-[100dvh] w-full flex flex-col justify-center items-center overflow-hidden bg-[#0a0a0a] py-32">
+      {/* 2. CONNECT AUDIO TO DYNAMIC URL */}
+      {dailyContent && (
+        <audio 
+            ref={audioRef}
+            src={dailyContent.audioUrl} // <--- DYNAMIC URL
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnded={() => setIsPlaying(false)}
+        />
+      )}
       
       {/* Noise Overlay */}
       <div className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay"
