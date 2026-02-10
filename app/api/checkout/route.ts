@@ -2,28 +2,27 @@ import { NextResponse } from "next/server";
 import Order from "@/models/Order"; 
 import connectDB from "@/lib/db";
 
+// CONFIG: Manual Exchange Rate (Update this if Naira fluctuates wildly)
+const USD_TO_NGN_RATE = 1700; 
+
 // Helper to Calculate Paystack Fee so Merchant gets exact amount
-// Formula: (Amount + FlatFee) / (1 - PercentFee)
 function calculateDynamicTotal(amount: number, currency: string) {
-  if (currency === "NGN") {
-    // Paystack NGN: 1.5% + ₦100 (Waived if < ₦2500, Capped at ₦2000)
-    let flatFee = 100;
-    const percentFee = 0.015;
-    
-    if (amount < 2500) flatFee = 0;
-    
-    // Calculate what we need to charge to get the exact 'amount'
-    let totalToCharge = (amount + flatFee) / (1 - percentFee);
-    
-    // Check if fee exceeds cap (Cap is ₦2000)
-    // If the calculated fee is huge, we might just use the uncapped formula or cap logic
-    // For simplicity and safety in this context:
-    return Math.ceil(totalToCharge); 
-  } else {
-    // Paystack USD (International): Generally 3.9% + ₦100 equivalent
-    // We will just add 4% buffer to be safe
-    return Math.ceil(amount / (1 - 0.04));
+  // 1. AUTO-CONVERT: If currency is USD, treat it as NGN for the payment calculation
+  let effectiveAmount = amount;
+  if (currency === "USD") {
+     effectiveAmount = amount * USD_TO_NGN_RATE;
   }
+
+  // 2. Paystack NGN Formula: (Amount + ₦100) / (1 - 1.5%)
+  let flatFee = 100;
+  const percentFee = 0.015;
+  
+  if (effectiveAmount < 2500) flatFee = 0;
+  
+  // Calculate total charge to ensure you get the exact book price
+  let totalToCharge = (effectiveAmount + flatFee) / (1 - percentFee);
+  
+  return Math.ceil(totalToCharge); 
 }
 
 export async function POST(req: Request) {
@@ -39,7 +38,7 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    // 1. Calculate the "Book Price" (Your Revenue)
+    // 1. Calculate Your Revenue (In the Original Currency)
     let revenueAmount = 0;
     items.forEach((item: any) => {
       const price = currency === "NGN" ? item.priceNGN : item.priceUSD;
@@ -47,15 +46,15 @@ export async function POST(req: Request) {
       revenueAmount += price * (item.quantity || 1);
     });
 
-    console.log("2. Net Revenue (Your Share):", revenueAmount);
+    console.log("2. Net Revenue (Your Share):", revenueAmount, currency);
 
-    // 2. Calculate "Charge Amount" (Customer pays this so you get RevenueAmount)
-    const chargeAmount = calculateDynamicTotal(revenueAmount, currency);
+    // 2. Calculate Charge Amount (Force everything to NGN for payment success)
+    const chargeAmountNGN = calculateDynamicTotal(revenueAmount, currency);
 
-    console.log("3. Total to Charge (Inc. Fees):", chargeAmount);
+    console.log("3. Total to Charge (NGN):", chargeAmountNGN);
 
     // 3. Create Order in DB
-    // IMPORTANT: We save 'revenueAmount' so your dashboard shows what YOU earned, not what Paystack took.
+    // We save the order as the ORIGINAL currency (USD/NGN) so your dashboard is accurate.
     const newOrder = await Order.create({
       customerEmail: email,
       customerName: email.split("@")[0],
@@ -65,12 +64,12 @@ export async function POST(req: Request) {
         price: currency === "NGN" ? i.priceNGN : i.priceUSD,
         quantity: i.quantity || 1,
       })),
-      totalAmount: revenueAmount, // Saving the Book Price
-      currency: currency,
+      totalAmount: revenueAmount, 
+      currency: currency, // e.g. "USD"
       status: "pending",
     });
 
-    // 4. Send to Paystack
+    // 4. Send to Paystack (ALWAYS IN NGN)
     if (!process.env.PAYSTACK_SECRET_KEY) {
       return NextResponse.json({ error: "Server Error: Missing Key" }, { status: 500 });
     }
@@ -78,11 +77,12 @@ export async function POST(req: Request) {
     const paystackUrl = "https://api.paystack.co/transaction/initialize";
     const payload = {
       email: email,
-      amount: chargeAmount * 100, // Paystack expects Kobo (We send the INFLATED amount)
-      currency: currency,
+      amount: chargeAmountNGN * 100, // Send the Converted NGN Kobo amount
+      currency: "NGN", // <--- FORCE NGN so Paystack doesn't reject it
       callback_url: `${process.env.NEXTAUTH_URL}/success`,
       metadata: {
         orderId: newOrder._id.toString(),
+        originalCurrency: currency // Track that they actually wanted to pay USD
       },
     };
 
