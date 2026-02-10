@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, Package, ExternalLink, CheckCircle, ShoppingBag, Loader2 } from "lucide-react";
+import { Plus, Edit, Trash2, Package, ExternalLink, DollarSign, ShoppingBag, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image"; 
 
-// Define types locally to ensure we have all Admin fields (like isPublished)
 interface Product {
   _id: string;
   title: string;
@@ -19,13 +18,13 @@ interface Product {
 
 interface Stats {
   totalProducts: number;
-  activeProducts: number;
+  totalRevenue: number; // <--- Changed from activeProducts
   totalOrders: number;
 }
 
 export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [stats, setStats] = useState<Stats>({ totalProducts: 0, activeProducts: 0, totalOrders: 0 });
+  const [stats, setStats] = useState<Stats>({ totalProducts: 0, totalRevenue: 0, totalOrders: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,10 +33,9 @@ export default function AdminDashboard() {
 
   async function fetchData() {
     try {
-      // Fetch Products AND Stats at the same time
       const [prodRes, statsRes] = await Promise.all([
         fetch("/api/products", { cache: "no-store" }),
-        fetch("/api/admin/stats", { cache: "no-store" }) // <--- THE NEW API
+        fetch("/api/admin/stats", { cache: "no-store" })
       ]);
 
       const prodData = await prodRes.json();
@@ -62,7 +60,6 @@ export default function AdminDashboard() {
       });
 
       if (res.ok) {
-        // Update local state immediately (faster than re-fetching)
         setProducts(products.filter((p) => p._id !== id));
         setStats(prev => ({ ...prev, totalProducts: prev.totalProducts - 1 }));
       } else {
@@ -91,7 +88,7 @@ export default function AdminDashboard() {
           </div>
           
           <Link 
-            href="/admin/new" // Changed to /new to match typical routing, ensure folder exists
+            href="/admin/new" 
             className="flex items-center gap-2 bg-[#d4af37] text-black px-6 py-3 rounded-full font-bold hover:bg-white transition-colors"
           >
             <Plus size={18} /> Add New Product
@@ -111,20 +108,20 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Card 2: Published */}
+          {/* Card 2: Revenue (UPDATED) */}
           <div className="bg-[#111] border border-white/10 p-6 rounded-xl flex items-center gap-4">
             <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center text-green-500">
-              <CheckCircle size={24} />
+              <DollarSign size={24} />
             </div>
             <div>
-              <p className="text-gray-500 text-xs font-bold tracking-widest uppercase">Active Now</p>
+              <p className="text-gray-500 text-xs font-bold tracking-widest uppercase">Total Revenue</p>
               <h3 className="text-3xl font-serif text-white">
-                {stats.activeProducts}
+                 ₦{stats.totalRevenue.toLocaleString()}
               </h3>
             </div>
           </div>
 
-          {/* Card 3: Total Orders (NOW CONNECTED) */}
+          {/* Card 3: Total Orders */}
           <div className="bg-[#111] border border-white/10 p-6 rounded-xl flex items-center gap-4">
             <div className="w-12 h-12 bg-[#d4af37]/10 rounded-full flex items-center justify-center text-[#d4af37]">
               <ShoppingBag size={24} />

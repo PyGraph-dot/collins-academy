@@ -7,16 +7,24 @@ export async function GET() {
   try {
     await connectDB();
 
-    // Run all counting queries at the same time for speed
-    const [totalProducts, activeProducts, totalOrders] = await Promise.all([
-      Product.countDocuments({}),
-      Product.countDocuments({ isPublished: true }),
-      Order.countDocuments({ status: "success" }), // Only count successful orders
+    // 1. Count Total Products
+    const totalProducts = await Product.countDocuments({});
+    
+    // 2. Count Total Orders (Success only)
+    const totalOrders = await Order.countDocuments({ status: "success" });
+
+    // 3. Calculate Total Revenue (Sum of all successful orders)
+    // We use MongoDB Aggregation to sum the 'totalAmount' field
+    const revenueStats = await Order.aggregate([
+      { $match: { status: "success" } }, // Filter only successful
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } } // Sum the totalAmount
     ]);
+
+    const totalRevenue = revenueStats.length > 0 ? revenueStats[0].total : 0;
 
     return NextResponse.json({
       totalProducts,
-      activeProducts,
+      totalRevenue, // <--- This replaced activeProducts
       totalOrders,
     });
   } catch (error) {
