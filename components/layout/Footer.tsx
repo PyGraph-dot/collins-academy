@@ -1,4 +1,4 @@
-"use client"; // <--- ADD THIS
+"use client"; 
 
 import Link from "next/link";
 import { usePathname } from "next/navigation"; // <--- IMPORT THIS

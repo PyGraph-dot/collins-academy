@@ -1,27 +1,53 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, DollarSign, Package, ExternalLink } from "lucide-react";
+import { Plus, Edit, Trash2, Package, ExternalLink, CheckCircle, ShoppingBag, Loader2 } from "lucide-react";
 import Link from "next/link";
-// FIX: Import CartItem instead of Product
-import { CartItem } from "@/store/cart"; 
+import Image from "next/image"; 
+
+// Define types locally to ensure we have all Admin fields (like isPublished)
+interface Product {
+  _id: string;
+  title: string;
+  priceNGN: number;
+  priceUSD: number;
+  image: string;
+  category: string;
+  isPublished: boolean;
+  fileUrl?: string;
+}
+
+interface Stats {
+  totalProducts: number;
+  activeProducts: number;
+  totalOrders: number;
+}
 
 export default function AdminDashboard() {
-  // FIX: Use CartItem[] here too
-  const [products, setProducts] = useState<CartItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [stats, setStats] = useState<Stats>({ totalProducts: 0, activeProducts: 0, totalOrders: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchProducts();
+    fetchData();
   }, []);
 
-  async function fetchProducts() {
+  async function fetchData() {
     try {
-      const res = await fetch("/api/products");
-      const data = await res.json();
-      setProducts(data);
+      // Fetch Products AND Stats at the same time
+      const [prodRes, statsRes] = await Promise.all([
+        fetch("/api/products", { cache: "no-store" }),
+        fetch("/api/admin/stats", { cache: "no-store" }) // <--- THE NEW API
+      ]);
+
+      const prodData = await prodRes.json();
+      const statsData = await statsRes.json();
+
+      if (Array.isArray(prodData)) setProducts(prodData);
+      if (statsData) setStats(statsData);
+
     } catch (error) {
-      console.error("Failed to fetch products", error);
+      console.error("Failed to fetch data", error);
     } finally {
       setLoading(false);
     }
@@ -31,18 +57,29 @@ export default function AdminDashboard() {
     if (!confirm("Are you sure you want to delete this product?")) return;
 
     try {
-      await fetch("/api/products", {
+      const res = await fetch(`/api/products?id=${id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
       });
-      fetchProducts(); // Refresh list
+
+      if (res.ok) {
+        // Update local state immediately (faster than re-fetching)
+        setProducts(products.filter((p) => p._id !== id));
+        setStats(prev => ({ ...prev, totalProducts: prev.totalProducts - 1 }));
+      } else {
+        alert("Failed to delete");
+      }
     } catch (error) {
-      alert("Failed to delete");
+      alert("Error deleting product");
     }
   }
 
-  if (loading) return <div className="p-10 text-white">Loading Admin Panel...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">
+        <Loader2 className="animate-spin text-[#d4af37]" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-8 pt-24">
@@ -54,32 +91,47 @@ export default function AdminDashboard() {
           </div>
           
           <Link 
-            href="/admin/add" 
+            href="/admin/new" // Changed to /new to match typical routing, ensure folder exists
             className="flex items-center gap-2 bg-[#d4af37] text-black px-6 py-3 rounded-full font-bold hover:bg-white transition-colors"
           >
             <Plus size={18} /> Add New Product
           </Link>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-[#111] p-6 rounded-xl border border-white/10">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400"><Package /></div>
-              <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wider">Total Products</p>
-                <p className="text-2xl font-bold">{products.length}</p>
-              </div>
+        {/* Dashboard Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Card 1: Total Products */}
+          <div className="bg-[#111] border border-white/10 p-6 rounded-xl flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500">
+              <Package size={24} />
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs font-bold tracking-widest uppercase">Total Products</p>
+              <h3 className="text-3xl font-serif text-white">{stats.totalProducts}</h3>
             </div>
           </div>
-          
-          <div className="bg-[#111] p-6 rounded-xl border border-white/10">
-            <div className="flex items-center gap-4">
-               <div className="p-3 bg-green-500/10 rounded-lg text-green-400"><DollarSign /></div>
-               <div>
-                 <p className="text-gray-400 text-xs uppercase tracking-wider">Active</p>
-                 <p className="text-2xl font-bold">{products.length}</p>
-               </div>
+
+          {/* Card 2: Published */}
+          <div className="bg-[#111] border border-white/10 p-6 rounded-xl flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center text-green-500">
+              <CheckCircle size={24} />
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs font-bold tracking-widest uppercase">Active Now</p>
+              <h3 className="text-3xl font-serif text-white">
+                {stats.activeProducts}
+              </h3>
+            </div>
+          </div>
+
+          {/* Card 3: Total Orders (NOW CONNECTED) */}
+          <div className="bg-[#111] border border-white/10 p-6 rounded-xl flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#d4af37]/10 rounded-full flex items-center justify-center text-[#d4af37]">
+              <ShoppingBag size={24} />
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs font-bold tracking-widest uppercase">Total Orders</p>
+              <h3 className="text-3xl font-serif text-white">{stats.totalOrders}</h3>
             </div>
           </div>
         </div>
@@ -105,14 +157,14 @@ export default function AdminDashboard() {
                   <tr key={product._id} className="hover:bg-white/5 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-16 bg-gray-800 rounded overflow-hidden">
+                        <div className="w-12 h-16 bg-gray-800 rounded overflow-hidden relative">
                           {product.image ? (
-                            <img src={product.image} alt={product.title} className="w-full h-full object-cover" />
+                            <Image src={product.image} alt={product.title} fill className="object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-xs">IMG</div>
                           )}
                         </div>
-                        <span className="font-medium">{product.title}</span>
+                        <span className="font-medium text-white">{product.title}</span>
                       </div>
                     </td>
                     <td className="p-4 font-mono text-gray-300">₦{product.priceNGN.toLocaleString()}</td>
