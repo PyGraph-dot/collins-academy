@@ -25,6 +25,11 @@ export default function Header() {
     if (isOpen) setIsOpen(false);
   }, [pathname]);
 
+  // --- NEW: HIDE HEADER ON ADMIN & LOGIN PAGES ---
+  if (pathname?.startsWith("/admin") || pathname === "/login") {
+    return null;
+  }
+
   return (
     <>
       {/* HEADER BAR */}
@@ -35,7 +40,7 @@ export default function Header() {
       >
         <div className="container mx-auto px-6 flex justify-between items-center relative">
           
-          {/* LOGO (Always visible, sits above overlay) */}
+          {/* LOGO */}
           <Link href="/" className="text-xl font-serif text-white tracking-wider font-bold z-[101] relative">
             COLLINS<span className="text-[#d4af37]">.</span>
           </Link>
@@ -56,7 +61,7 @@ export default function Header() {
           {/* ICONS AREA */}
           <div className="flex items-center gap-6 z-[101] relative">
             
-            {/* CART BUTTON (Hidden when Mobile Menu is Open) */}
+            {/* CART BUTTON */}
             <AnimatePresence>
               {!isOpen && (
                 <motion.button 
@@ -77,13 +82,12 @@ export default function Header() {
               )}
             </AnimatePresence>
 
-            {/* MOBILE MENU TOGGLE (Always Visible) */}
+            {/* MOBILE MENU TOGGLE */}
             <motion.button 
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsOpen(!isOpen)} 
               className="md:hidden text-white hover:text-[#d4af37] transition-colors w-8 h-8 flex items-center justify-center focus:outline-none"
             >
-              {/* Force Swap: Only render ONE icon based on state */}
               {isOpen ? <X size={28} /> : <Menu size={28} />}
             </motion.button>
 
@@ -91,7 +95,7 @@ export default function Header() {
         </div>
       </header>
 
-      {/* FULL SCREEN MOBILE OVERLAY */}
+      {/* MOBILE MENU OVERLAY */}
       <AnimatePresence>
         {isOpen && (
           <motion.div

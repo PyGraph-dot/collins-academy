@@ -1,7 +1,17 @@
+"use client"; // <--- ADD THIS
+
 import Link from "next/link";
+import { usePathname } from "next/navigation"; // <--- IMPORT THIS
 import { Instagram, Twitter, Linkedin, Mail } from "lucide-react";
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  // --- NEW: HIDE FOOTER ON ADMIN & LOGIN PAGES ---
+  if (pathname?.startsWith("/admin") || pathname === "/login") {
+    return null;
+  }
+
   return (
     <footer className="bg-[#050505] border-t border-white/5 pt-20 pb-10">
       <div className="container mx-auto px-6">
