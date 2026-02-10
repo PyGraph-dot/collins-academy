@@ -56,7 +56,7 @@ function SuccessContent() {
     }
 
     verifyPayment();
-  }, [reference, closeCart, clearCart]);
+  }, [reference]); // Only depend on reference, not on clearCart/closeCart
 
   // --- NEW: Force Download & Rename Function ---
   const handleDownload = async (url: string, title: string) => {
@@ -187,7 +187,7 @@ function SuccessContent() {
 
         <div className="mt-8 pt-6 border-t border-white/10 text-center">
            <p className="text-xs text-gray-500 mb-2">A receipt has been sent to <span className="text-white">{order.customerEmail}</span></p>
-           <p className="text-[10px] text-gray-600">Order Ref: {order.transactionId}</p>
+           <p className="text-[10px] text-gray-600">Order Ref: {order.transactionId || order._id}</p>
         </div>
       </div>
 

@@ -92,7 +92,7 @@ export async function GET(req: Request) {
     const currency = transaction.currency || "NGN";
 
     const orderItems = products.map((product: any) => ({
-      productId: product._id,
+      productId: product, // Include full product object with fileUrl
       title: product.title,
       price: currency === "NGN" ? product.priceNGN : product.priceUSD,
       quantity: 1, // Each product appears once in this cart
@@ -106,7 +106,7 @@ export async function GET(req: Request) {
       totalAmount: totalAmount / 100, // Convert from kobo back to normal units
       currency: currency,
       status: "completed", // Payment was verified, so mark as completed
-      paystackReference: reference, // Store reference for future lookups
+      transactionId: reference, // Store reference for future lookups
     });
 
     console.log("4. Order Created ✓");
@@ -120,7 +120,19 @@ export async function GET(req: Request) {
         _id: newOrder._id,
         customerEmail: newOrder.customerEmail,
         customerName: newOrder.customerName,
-        items: newOrder.items,
+        items: newOrder.items.map((item: any, idx: number) => {
+          const product = products[idx];
+          return {
+            title: item.title,
+            price: item.price,
+            quantity: item.quantity,
+            productId: {
+              _id: product._id,
+              image: product.image,
+              fileUrl: product.fileUrl,
+            },
+          };
+        }),
         totalAmount: newOrder.totalAmount,
         currency: newOrder.currency,
         status: newOrder.status,
