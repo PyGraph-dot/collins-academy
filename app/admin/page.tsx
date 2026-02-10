@@ -88,7 +88,7 @@ export default function AdminDashboard() {
           </div>
           
           <Link 
-            href="/admin/new" 
+            href="/admin/add" 
             className="flex items-center gap-2 bg-[#d4af37] text-black px-6 py-3 rounded-full font-bold hover:bg-white transition-colors"
           >
             <Plus size={18} /> Add New Product
