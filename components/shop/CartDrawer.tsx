@@ -11,14 +11,16 @@ export default function CartDrawer() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
 
+  // Calculate Total
   const totalAmount = items.reduce((acc, item) => {
     const price = currency === 'NGN' ? item.priceNGN : item.priceUSD;
     return acc + price;
   }, 0);
 
-  const handlePaystackPayment = () => {
+  // --- NEW: INLINE PAYMENT HANDLER ---
+  const handleCheckout = () => {
     if (!email) {
-      alert("Please enter your email address.");
+      alert("Please enter your email address to receive your files.");
       return;
     }
 
@@ -29,23 +31,23 @@ export default function CartDrawer() {
     
     if (!publicKey) {
       setLoading(false);
-      alert("CRITICAL ERROR: Paystack Public Key is missing in Vercel Settings. Please add it and Redeploy.");
+      alert("Error: Paystack Public Key is missing in Vercel Settings.");
       return;
     }
 
-    // 2. CHECK SCRIPT PRESENCE
+    // 2. CHECK IF SCRIPT IS LOADED
     if (typeof (window as any).PaystackPop === 'undefined') {
        setLoading(false);
-       alert("Paystack secure connection is still loading... Please wait 3 seconds and click Pay again.");
+       alert("Paystack is still connecting. Please wait 2 seconds and click Pay again.");
        return;
     }
 
     try {
-      // FIX: Use .setup() instead of new PaystackPop()
+      // 3. INITIALIZE POPUP (Using .setup() to fix the error)
       const handler = (window as any).PaystackPop.setup({
         key: publicKey,
         email: email,
-        amount: totalAmount * 100, // Convert to kobo/cents
+        amount: totalAmount * 100, // Paystack needs kobo/cents
         currency: currency,
         metadata: {
           custom_fields: [
@@ -56,26 +58,28 @@ export default function CartDrawer() {
             }
           ]
         },
+        // --- THIS IS HOW WE HANDLE SUCCESS INLINE ---
         callback: function(response: any) { 
-          // This is the success callback
+          // Payment is done! Now verify it on backend.
           verifyTransaction(response.reference);
         },
         onClose: function() {
           setLoading(false);
-          // Optional: alert("Transaction cancelled.");
+          // alert("Transaction cancelled.");
         }
       });
 
-      // Open the iframe
+      // 4. OPEN THE POPUP
       handler.openIframe();
 
     } catch (error: any) {
-      console.error("Paystack Crash:", error);
+      console.error("Paystack Error:", error);
       setLoading(false);
-      alert("Payment Window Failed: " + (error.message || JSON.stringify(error)));
+      alert("Could not open payment window: " + error.message);
     }
   };
 
+  // --- VERIFY TRANSACTION (Server-Side) ---
   const verifyTransaction = async (reference: string) => {
     try {
       const res = await fetch("/api/verify-order", {
@@ -93,11 +97,11 @@ export default function CartDrawer() {
       const data = await res.json();
 
       if (res.ok) {
-        alert("Success! Check your email for the files.");
+        alert("Payment Successful! Check your email for download links.");
         clearCart();
         toggleCart();
       } else {
-        alert("Payment verified but order failed: " + data.message);
+        alert("Payment successful, but order creation failed: " + data.message);
       }
     } catch (error) {
       alert("Network Error: Could not verify payment.");
@@ -108,7 +112,7 @@ export default function CartDrawer() {
 
   return (
     <>
-      {/* FORCE LOAD SCRIPT */}
+      {/* LOAD PAYSTACK SCRIPT */}
       <Script 
         src="https://js.paystack.co/v1/inline.js" 
         strategy="afterInteractive" 
@@ -117,6 +121,7 @@ export default function CartDrawer() {
       <AnimatePresence>
         {isOpen && (
           <>
+            {/* Dark Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
@@ -125,6 +130,7 @@ export default function CartDrawer() {
               className="fixed inset-0 bg-black/80 z-[60] backdrop-blur-sm"
             />
             
+            {/* The Drawer Panel */}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
@@ -142,6 +148,7 @@ export default function CartDrawer() {
                 </button>
               </div>
 
+              {/* Currency Toggle */}
               <div className="flex bg-white/5 p-1 rounded-lg mb-6 w-fit">
                  {['NGN', 'USD'].map((curr) => (
                    <button
@@ -154,6 +161,7 @@ export default function CartDrawer() {
                  ))}
               </div>
 
+              {/* Cart Items */}
               <div className="flex-1 overflow-y-auto space-y-6">
                 {items.length === 0 ? (
                   <div className="text-center text-gray-500 mt-20">
@@ -185,6 +193,7 @@ export default function CartDrawer() {
                 )}
               </div>
 
+              {/* Footer / Checkout */}
               {items.length > 0 && (
                 <div className="border-t border-white/10 pt-6 mt-6 space-y-4">
                   <div className="flex justify-between items-center text-xl font-serif text-white">
@@ -194,6 +203,7 @@ export default function CartDrawer() {
                     </span>
                   </div>
 
+                  {/* Email Input */}
                   <div>
                     <label className="text-xs uppercase text-gray-500 mb-1 block">Email for Receipt</label>
                     <input 
@@ -206,7 +216,7 @@ export default function CartDrawer() {
                   </div>
 
                   <button 
-                    onClick={handlePaystackPayment}
+                    onClick={handleCheckout}
                     disabled={loading}
                     className="w-full py-4 bg-[#d4af37] hover:bg-[#b5952f] text-black font-bold uppercase tracking-wider transition-colors rounded-sm flex items-center justify-center gap-2 disabled:opacity-50"
                   >
