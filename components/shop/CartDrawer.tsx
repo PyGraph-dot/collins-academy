@@ -5,13 +5,11 @@ import { useCart } from "@/store/cart";
 import { X, ShoppingBag, Trash2, Loader2, CreditCard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Script from "next/script";
-import { useRouter } from "next/navigation"; // Import useRouter
 
 export default function CartDrawer() {
   const { items, isOpen, toggleCart, removeItem, currency, setCurrency, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const router = useRouter(); // Initialize router
 
   const totalAmount = items.reduce((acc, item) => {
     const price = currency === 'NGN' ? item.priceNGN : item.priceUSD;
@@ -34,9 +32,10 @@ export default function CartDrawer() {
       return;
     }
 
+    // Safety Check: Ensure Script is loaded
     if (typeof (window as any).PaystackPop === 'undefined') {
        setLoading(false);
-       alert("Paystack is loading... please wait 2 seconds.");
+       alert("Paystack is connecting... please wait 3 seconds and try again.");
        return;
     }
 
@@ -47,10 +46,7 @@ export default function CartDrawer() {
         amount: totalAmount * 100, // kobo
         currency: currency,
         metadata: {
-          // 1. Send book IDs so backend can verify and create order
           cart_ids: items.map(item => item._id),
-          
-          // 2. Display on Paystack Dashboard
           custom_fields: [
             {
                display_name: "Items",
@@ -60,14 +56,17 @@ export default function CartDrawer() {
           ]
         },
         callback: function(response: any) { 
-          // --- SUCCESS! REDIRECT TO THE DEDICATED SUCCESS PAGE ---
-          // This keeps the cart simple and uses your existing page logic.
-          clearCart();
-          toggleCart();
-          router.push(`/success?reference=${response.reference}`);
+          // --- PAYMENT SUCCESSFUL ---
+          setLoading(false); // 1. Stop the spinner immediately
+          clearCart();       // 2. Clear the cart data
+          toggleCart();      // 3. Close the drawer
+          
+          // 4. FORCE REDIRECT (Hard navigation is safer here)
+          window.location.href = `/success?reference=${response.reference}`;
         },
         onClose: function() {
-          setLoading(false);
+          setLoading(false); // Stop spinner if user closes popup
+          // alert("Transaction cancelled.");
         }
       });
 

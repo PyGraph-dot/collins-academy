@@ -3,16 +3,7 @@ import Order from "@/models/Order";
 import Product from "@/models/Product";
 import connectDB from "@/lib/db";
 
-/**
- * VERIFICATION API
- * 
- * This is the brains of the new payment flow:
- * 1. User pays on frontend (via Paystack)
- * 2. We verify the payment here with Paystack
- * 3. We extract the cart_ids from metadata
- * 4. We fetch those products and create the order
- * 5. Success page queries this to show order details
- */
+export const dynamic = 'force-dynamic'; // Ensure this route is never cached
 
 export async function GET(req: Request) {
   try {
@@ -20,133 +11,90 @@ export async function GET(req: Request) {
     const reference = searchParams.get("reference");
 
     if (!reference) {
-      return NextResponse.json(
-        { error: "Missing reference parameter" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Missing reference" }, { status: 400 });
     }
 
-    // Step 1: Verify with Paystack
-    const paystackVerifyUrl = `https://api.paystack.co/transaction/verify/${reference}`;
-    const paystackResponse = await fetch(paystackVerifyUrl, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-      },
+    // 1. Verify with Paystack
+    const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+      headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
     });
+    
+    const paystackData = await paystackRes.json();
 
-    const paystackData = await paystackResponse.json();
-
-    // Safety check: Make sure payment was successful
-    if (!paystackData.status || !paystackData.data) {
-      console.error("Paystack verification failed:", paystackData);
-      return NextResponse.json(
-        { error: "Payment verification failed", details: paystackData.message },
-        { status: 400 }
-      );
+    if (!paystackData.status || paystackData.data.status !== "success") {
+      return NextResponse.json({ success: false, error: "Payment verification failed" }, { status: 400 });
     }
 
-    const transaction = paystackData.data;
-
-    // Safety check: Payment status must be "success"
-    if (transaction.status !== "success") {
-      return NextResponse.json(
-        { error: `Payment status is ${transaction.status}, not success` },
-        { status: 400 }
-      );
-    }
-
-    // Step 2: Extract metadata
-    const cartIds = transaction.metadata?.cart_ids || [];
-    const email = transaction.customer?.email || "unknown@example.com";
-
-    if (cartIds.length === 0) {
-      return NextResponse.json(
-        { error: "No items found in payment metadata" },
-        { status: 400 }
-      );
-    }
-
-    console.log("2. Payment Verified ✓");
-    console.log("   Cart IDs:", cartIds);
-    console.log("   Email:", email);
-
-    // Step 3: Connect to DB & fetch products
     await connectDB();
 
-    // Fetch all products that match the cart IDs
-    const products = await Product.find({ _id: { $in: cartIds } });
+    // 2. Check for Duplicate Order
+    const existingOrder = await Order.findOne({ transactionId: reference });
+    if (existingOrder) {
+      // If order exists, fetch full details to return to success page
+      const populatedOrder = await Order.findById(existingOrder._id);
+      // We manually fetch products to populate item details for the frontend
+      const itemIds = existingOrder.items.map((i: any) => i.productId);
+      const products = await Product.find({ _id: { $in: itemIds } });
+      
+      const enrichedOrder = {
+        ...populatedOrder.toObject(),
+        items: populatedOrder.items.map((item: any) => {
+          const product = products.find((p: any) => p._id.toString() === item.productId.toString());
+          return {
+             ...item,
+             productId: product || null // Ensure product details are attached
+          };
+        })
+      };
 
-    if (products.length === 0) {
-      return NextResponse.json(
-        { error: "Products not found in database" },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: true, order: enrichedOrder });
     }
 
-    console.log("3. Products Found ✓");
-    console.log("   Count:", products.length);
+    // 3. New Order Logic
+    const meta = paystackData.data.metadata;
+    const cartIds = meta?.cart_ids || [];
 
-    // Step 4: Build order from verified payment + products
-    const totalAmount = transaction.amount; // Already in kobo from Paystack
-    const currency = transaction.currency || "NGN";
+    if (!cartIds.length) {
+       return NextResponse.json({ success: false, error: "No products in metadata" }, { status: 400 });
+    }
 
-    const orderItems = products.map((product: any) => ({
-      productId: product, // Include full product object with fileUrl
-      title: product.title,
-      price: currency === "NGN" ? product.priceNGN : product.priceUSD,
-      quantity: 1, // Each product appears once in this cart
-    }));
+    // Fetch Products
+    const products = await Product.find({ _id: { $in: cartIds } });
 
-    // Step 5: Create the order
+    // Create Order
     const newOrder = await Order.create({
-      customerEmail: email,
-      customerName: email.split("@")[0],
-      items: orderItems,
-      totalAmount: totalAmount / 100, // Convert from kobo back to normal units
-      currency: currency,
-      status: "completed", // Payment was verified, so mark as completed
-      transactionId: reference, // Store reference for future lookups
+      customerEmail: paystackData.data.customer.email,
+      transactionId: reference,
+      amount: paystackData.data.amount / 100,
+      currency: paystackData.data.currency,
+      status: "completed",
+      items: products.map((p: any) => ({
+        productId: p._id,
+        title: p.title,
+        price: p.priceUSD, // Defaulting to USD price for record, or check currency
+        quantity: 1
+      }))
     });
 
-    console.log("4. Order Created ✓");
-    console.log("   Order ID:", newOrder._id);
-
-    // Step 6: Return the order so Success Page can display it
-    return NextResponse.json({
-      success: true,
-      message: "Payment verified and order created",
-      order: {
+    // 4. Return Enriched Order for Success Page
+    // We construct the response manually to ensure the Success Page has image/fileUrl
+    const orderResponse = {
         _id: newOrder._id,
         customerEmail: newOrder.customerEmail,
-        customerName: newOrder.customerName,
-        items: newOrder.items.map((item: any, idx: number) => {
-          const product = products[idx];
-          return {
-            title: item.title,
-            price: item.price,
-            quantity: item.quantity,
+        transactionId: newOrder.transactionId,
+        items: products.map((p: any) => ({
+            title: p.title,
             productId: {
-              _id: product._id,
-              image: product.image,
-              fileUrl: product.fileUrl,
-            },
-          };
-        }),
-        totalAmount: newOrder.totalAmount,
-        currency: newOrder.currency,
-        status: newOrder.status,
-        createdAt: newOrder.createdAt,
-      },
-    });
+                image: p.image,
+                fileUrl: p.fileUrl
+            }
+        }))
+    };
+
+    return NextResponse.json({ success: true, order: orderResponse });
+
   } catch (error: any) {
     console.error("Verification Error:", error);
-    return NextResponse.json(
-      {
-        error: "Verification failed",
-        details: error.message,
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Server Error" }, { status: 500 });
   }
 }
