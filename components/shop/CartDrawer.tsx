@@ -34,7 +34,6 @@ export default function CartDrawer() {
     }
 
     // 2. CHECK SCRIPT PRESENCE
-    // If script is missing, we alert the user (or you could verify it loaded)
     if (typeof (window as any).PaystackPop === 'undefined') {
        setLoading(false);
        alert("Paystack secure connection is still loading... Please wait 3 seconds and click Pay again.");
@@ -42,9 +41,8 @@ export default function CartDrawer() {
     }
 
     try {
-      const paystack = new (window as any).PaystackPop();
-      
-      paystack.newTransaction({
+      // FIX: Use .setup() instead of new PaystackPop()
+      const handler = (window as any).PaystackPop.setup({
         key: publicKey,
         email: email,
         amount: totalAmount * 100, // Convert to kobo/cents
@@ -58,21 +56,22 @@ export default function CartDrawer() {
             }
           ]
         },
-        onSuccess: (transaction: any) => { 
-          verifyTransaction(transaction.reference);
+        callback: function(response: any) { 
+          // This is the success callback
+          verifyTransaction(response.reference);
         },
-        onCancel: () => {
+        onClose: function() {
           setLoading(false);
-        },
-        onError: (error: any) => {
-           setLoading(false);
-           alert("Paystack Gateway Error: " + error.message);
+          // Optional: alert("Transaction cancelled.");
         }
       });
+
+      // Open the iframe
+      handler.openIframe();
+
     } catch (error: any) {
       console.error("Paystack Crash:", error);
       setLoading(false);
-      // SHOW THE REAL ERROR MESSAGE
       alert("Payment Window Failed: " + (error.message || JSON.stringify(error)));
     }
   };
