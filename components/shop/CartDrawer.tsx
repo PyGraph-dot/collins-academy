@@ -16,27 +16,30 @@ export default function CartDrawer() {
     return acc + price;
   }, 0);
 
-  // --- ROBUST PAYSTACK HANDLER ---
   const handlePaystackPayment = () => {
     if (!email) {
-      alert("Please enter your email address to receive your files.");
-      return;
-    }
-
-    // 1. Check if API Key exists
-    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-    if (!publicKey) {
-      alert("Error: Paystack Public Key is missing in environment variables.");
-      return;
-    }
-
-    // 2. Check if Script is loaded
-    if (typeof (window as any).PaystackPop === 'undefined') {
-      alert("Paystack is still loading. Please wait 2 seconds and try again.");
+      alert("Please enter your email address.");
       return;
     }
 
     setLoading(true);
+
+    // 1. GET KEY SAFELY
+    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+    
+    if (!publicKey) {
+      setLoading(false);
+      alert("CRITICAL ERROR: Paystack Public Key is missing in Vercel Settings. Please add it and Redeploy.");
+      return;
+    }
+
+    // 2. CHECK SCRIPT PRESENCE
+    // If script is missing, we alert the user (or you could verify it loaded)
+    if (typeof (window as any).PaystackPop === 'undefined') {
+       setLoading(false);
+       alert("Paystack secure connection is still loading... Please wait 3 seconds and click Pay again.");
+       return;
+    }
 
     try {
       const paystack = new (window as any).PaystackPop();
@@ -44,7 +47,7 @@ export default function CartDrawer() {
       paystack.newTransaction({
         key: publicKey,
         email: email,
-        amount: totalAmount * 100, // Kobo
+        amount: totalAmount * 100, // Convert to kobo/cents
         currency: currency,
         metadata: {
           custom_fields: [
@@ -60,12 +63,17 @@ export default function CartDrawer() {
         },
         onCancel: () => {
           setLoading(false);
+        },
+        onError: (error: any) => {
+           setLoading(false);
+           alert("Paystack Gateway Error: " + error.message);
         }
       });
-    } catch (error) {
-      console.error("Paystack Init Error:", error);
-      alert("Failed to load payment window. Please refresh.");
+    } catch (error: any) {
+      console.error("Paystack Crash:", error);
       setLoading(false);
+      // SHOW THE REAL ERROR MESSAGE
+      alert("Payment Window Failed: " + (error.message || JSON.stringify(error)));
     }
   };
 
@@ -86,15 +94,14 @@ export default function CartDrawer() {
       const data = await res.json();
 
       if (res.ok) {
-        alert("Payment Successful! Check your email for the download links.");
+        alert("Success! Check your email for the files.");
         clearCart();
         toggleCart();
       } else {
         alert("Payment verified but order failed: " + data.message);
       }
     } catch (error) {
-      console.error("Verification Error:", error);
-      alert("Payment successful, but network error occurred confirming order.");
+      alert("Network Error: Could not verify payment.");
     } finally {
       setLoading(false);
     }
@@ -102,8 +109,11 @@ export default function CartDrawer() {
 
   return (
     <>
-      {/* CHANGED: Use strategy="beforeInteractive" to ensure it loads fast */}
-      <Script src="https://js.paystack.co/v1/inline.js" strategy="beforeInteractive" />
+      {/* FORCE LOAD SCRIPT */}
+      <Script 
+        src="https://js.paystack.co/v1/inline.js" 
+        strategy="afterInteractive" 
+      />
 
       <AnimatePresence>
         {isOpen && (
