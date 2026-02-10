@@ -30,7 +30,7 @@ export default function Header() {
     return null;
   }
 
-  // UPDATED LINKS: Full List including Home & My Library
+  // NAVIGATION LINKS
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Shop", href: "/shop" },
@@ -50,7 +50,7 @@ export default function Header() {
            isScrolled ? "bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/5 py-4" : "bg-transparent py-6"
         }`}
       >
-        {/* INNER CONTAINER - Perfectly aligned with page content */}
+        {/* INNER CONTAINER - Aligned with your content grid (max-w-7xl) */}
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           
           {/* 1. LOGO (Far Left) */}
@@ -99,12 +99,34 @@ export default function Header() {
               )}
             </button>
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - FIXED: NO STACKING */}
             <button 
-              className="md:hidden text-white hover:text-[#d4af37] transition-colors"
+              className="md:hidden text-white hover:text-[#d4af37] transition-colors w-6 h-6 flex items-center justify-center"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              <AnimatePresence mode="wait" initial={false}>
+                {mobileMenuOpen ? (
+                  <motion.div
+                    key="close"
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <X size={24} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="menu"
+                    initial={{ rotate: 90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: -90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Menu size={24} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </button>
           </div>
         </div>
