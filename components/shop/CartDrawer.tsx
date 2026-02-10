@@ -47,6 +47,10 @@ export default function CartDrawer() {
         amount: totalAmount * 100, // kobo
         currency: currency,
         metadata: {
+          // 1. Send book IDs so backend can verify and create order
+          cart_ids: items.map(item => item._id),
+          
+          // 2. Display on Paystack Dashboard
           custom_fields: [
             {
                display_name: "Items",
