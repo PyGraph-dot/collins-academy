@@ -3,37 +3,67 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 10, 10, 10;
+@layer base {
+  :root {
+    /* === LUXURY LIGHT MODE (Academy Paper) === */
+    --background: #F4F1EA;     /* Warm Cream/Paper */
+    --foreground: #1A1A1A;     /* Dark Charcoal Ink */
+    
+    --card: #FFFFFF;           /* Pure White Cards */
+    --card-foreground: #1A1A1A;
+    
+    --border: #DCD7C9;         /* Subtle darker cream border */
+    --gold: #AA8C2C;           /* Slightly darker gold for visibility on light bg */
+  }
+
+  .dark {
+    /* === ELITE DARK MODE (The Original) === */
+    --background: #0a0a0a;     /* Deep Void */
+    --foreground: #EDEDED;     /* Soft White */
+    
+    --card: #111111;           /* Slightly lighter black */
+    --card-foreground: #FFFFFF;
+    
+    --border: #222222;         /* Dark border */
+    --gold: #D4AF37;           /* Original Gold */
+  }
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: #0a0a0a;
+  /* Use the variables we just defined */
+  @apply bg-background text-foreground transition-colors duration-300;
   overflow-x: hidden;
 }
 
-/* Luxury Smooth Scrollbar */
+/* Luxury Smooth Scrollbar (Adaptive) */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #333;
   border-radius: 10px;
 }
+.dark ::-webkit-scrollbar-thumb {
+   background: #333;
+}
+/* In light mode, make scrollbar slightly lighter */
+:root:not(.dark) ::-webkit-scrollbar-thumb {
+   background: #CCC;
+}
 ::-webkit-scrollbar-thumb:hover {
-  background: #D4AF37;
+  background: var(--gold);
 }
 
-/* Fix for Lead Magnet Input */
+/* Fix for Autofill (Adaptive) */
+/* Force the background color to match the theme */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
-input:-webkit-autofill:active{
-    -webkit-box-shadow: 0 0 0 30px #0a0a0a inset !important;
-    -webkit-text-fill-color: white !important;
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--background) inset !important;
+    -webkit-text-fill-color: var(--foreground) !important;
+    transition: background-color 5000s ease-in-out 0s;
 }
