@@ -5,49 +5,46 @@ import { useCart } from "@/store/cart";
 import { X, ShoppingBag, Trash2, Loader2, CreditCard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Script from "next/script";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 export default function CartDrawer() {
   const { items, isOpen, toggleCart, removeItem, currency, setCurrency, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const router = useRouter(); // Initialize router
 
-  // Calculate Total
   const totalAmount = items.reduce((acc, item) => {
     const price = currency === 'NGN' ? item.priceNGN : item.priceUSD;
     return acc + price;
   }, 0);
 
-  // --- NEW: INLINE PAYMENT HANDLER ---
   const handleCheckout = () => {
     if (!email) {
-      alert("Please enter your email address to receive your files.");
+      alert("Please enter your email address.");
       return;
     }
 
     setLoading(true);
 
-    // 1. GET KEY SAFELY
     const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
     
     if (!publicKey) {
       setLoading(false);
-      alert("Error: Paystack Public Key is missing in Vercel Settings.");
+      alert("Error: Paystack Public Key is missing.");
       return;
     }
 
-    // 2. CHECK IF SCRIPT IS LOADED
     if (typeof (window as any).PaystackPop === 'undefined') {
        setLoading(false);
-       alert("Paystack is still connecting. Please wait 2 seconds and click Pay again.");
+       alert("Paystack is loading... please wait 2 seconds.");
        return;
     }
 
     try {
-      // 3. INITIALIZE POPUP (Using .setup() to fix the error)
       const handler = (window as any).PaystackPop.setup({
         key: publicKey,
         email: email,
-        amount: totalAmount * 100, // Paystack needs kobo/cents
+        amount: totalAmount * 100, // kobo
         currency: currency,
         metadata: {
           custom_fields: [
@@ -58,70 +55,34 @@ export default function CartDrawer() {
             }
           ]
         },
-        // --- THIS IS HOW WE HANDLE SUCCESS INLINE ---
         callback: function(response: any) { 
-          // Payment is done! Now verify it on backend.
-          verifyTransaction(response.reference);
+          // --- SUCCESS! REDIRECT TO THE DEDICATED SUCCESS PAGE ---
+          // This keeps the cart simple and uses your existing page logic.
+          clearCart();
+          toggleCart();
+          router.push(`/success?reference=${response.reference}`);
         },
         onClose: function() {
           setLoading(false);
-          // alert("Transaction cancelled.");
         }
       });
 
-      // 4. OPEN THE POPUP
       handler.openIframe();
 
     } catch (error: any) {
       console.error("Paystack Error:", error);
       setLoading(false);
-      alert("Could not open payment window: " + error.message);
-    }
-  };
-
-  // --- VERIFY TRANSACTION (Server-Side) ---
-  const verifyTransaction = async (reference: string) => {
-    try {
-      const res = await fetch("/api/verify-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reference,
-          email,
-          items,
-          amount: totalAmount,
-          currency
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        alert("Payment Successful! Check your email for download links.");
-        clearCart();
-        toggleCart();
-      } else {
-        alert("Payment successful, but order creation failed: " + data.message);
-      }
-    } catch (error) {
-      alert("Network Error: Could not verify payment.");
-    } finally {
-      setLoading(false);
+      alert("Payment Error: " + error.message);
     }
   };
 
   return (
     <>
-      {/* LOAD PAYSTACK SCRIPT */}
-      <Script 
-        src="https://js.paystack.co/v1/inline.js" 
-        strategy="afterInteractive" 
-      />
+      <Script src="https://js.paystack.co/v1/inline.js" strategy="afterInteractive" />
 
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Dark Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
@@ -130,7 +91,6 @@ export default function CartDrawer() {
               className="fixed inset-0 bg-black/80 z-[60] backdrop-blur-sm"
             />
             
-            {/* The Drawer Panel */}
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
@@ -148,7 +108,6 @@ export default function CartDrawer() {
                 </button>
               </div>
 
-              {/* Currency Toggle */}
               <div className="flex bg-white/5 p-1 rounded-lg mb-6 w-fit">
                  {['NGN', 'USD'].map((curr) => (
                    <button
@@ -161,7 +120,6 @@ export default function CartDrawer() {
                  ))}
               </div>
 
-              {/* Cart Items */}
               <div className="flex-1 overflow-y-auto space-y-6">
                 {items.length === 0 ? (
                   <div className="text-center text-gray-500 mt-20">
@@ -193,7 +151,6 @@ export default function CartDrawer() {
                 )}
               </div>
 
-              {/* Footer / Checkout */}
               {items.length > 0 && (
                 <div className="border-t border-white/10 pt-6 mt-6 space-y-4">
                   <div className="flex justify-between items-center text-xl font-serif text-white">
@@ -203,7 +160,6 @@ export default function CartDrawer() {
                     </span>
                   </div>
 
-                  {/* Email Input */}
                   <div>
                     <label className="text-xs uppercase text-gray-500 mb-1 block">Email for Receipt</label>
                     <input 
