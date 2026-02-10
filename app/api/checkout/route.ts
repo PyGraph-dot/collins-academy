@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       email: email,
       amount: totalAmount * 100, // Kobo
       currency: currency,
-      callback_url: `${process.env.NEXTAUTH_URL}/shop?status=success&orderId=${newOrder._id}`,
+      callback_url: `${process.env.NEXTAUTH_URL}/success`, // Paystack automatically adds ?reference=xyz
       metadata: {
         orderId: newOrder._id.toString(),
       },
