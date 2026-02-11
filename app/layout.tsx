@@ -4,7 +4,7 @@ import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer"; 
 import CartDrawer from "@/components/shop/CartDrawer";
-import { ThemeProvider } from "@/components/theme-provider"; // Import the provider
+// Removed ThemeProvider import
 
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-serif" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -20,22 +20,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    // FORCE LIGHT MODE HERE
+    <html lang="en" className="light" style={{ colorScheme: 'light' }} suppressHydrationWarning>
       <body className={`${playfair.variable} ${inter.variable} font-sans antialiased bg-background text-foreground`}>
-        {/* Wrap everything in the ThemeProvider */}
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark" // Default to Dark/Premium
-          enableSystem
-          disableTransitionOnChange
-        >
+        {/* ThemeProvider removed. Direct rendering ensures no flickering. */}
           <Header />
           <CartDrawer />
           <main className="min-h-screen">
             {children}
           </main>
           <Footer />
-        </ThemeProvider>
       </body>
     </html>
   );
