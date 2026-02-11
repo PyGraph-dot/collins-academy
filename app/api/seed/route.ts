@@ -7,7 +7,7 @@ export async function GET() {
   await connectDB();
 
   // Check if admin already exists
-  const existingUser = await User.findOne({ email: "admin@collins.com" });
+  const existingUser = await User.findOne({ email: "admin@lase.com" });
   if (existingUser) {
     return NextResponse.json({ message: "Admin already exists" });
   }
@@ -16,7 +16,7 @@ export async function GET() {
   const hashedPassword = await bcrypt.hash("admin123", 10);
   
   await User.create({
-    email: "admin@collins.com",
+    email: "admin@lase.com",
     password: hashedPassword,
     role: "admin",
   });
