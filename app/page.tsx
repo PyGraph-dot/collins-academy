@@ -8,17 +8,17 @@ import { ReactLenis } from '@studio-freight/react-lenis';
 export default function Home() {
   return (
     <ReactLenis root>
-      {/* UPDATED: Uses semantic background color */}
-      <main className="bg-background min-h-screen transition-colors duration-500">
+      {/* UPDATED: Dynamic background */}
+      <main className="bg-background text-foreground min-h-screen transition-colors duration-500">
         <Header />
         <Hero />
         <Library />
         <LeadMagnet />
         
-        {/* Footer Placeholder */}
-        <footer className="py-12 text-center text-muted-foreground text-sm border-t border-border">
+        {/* You can remove this footer placeholder since you have a real global footer now */}
+        {/* <footer className="py-12 text-center text-muted-foreground text-sm border-t border-border">
           <p>© 2026 The Collins Academy. All rights reserved.</p>
-        </footer>
+        </footer> */}
       </main>
     </ReactLenis>
   );
