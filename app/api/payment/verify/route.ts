@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import Order from "@/models/Order";
 import Product from "@/models/Product";
 import connectDB from "@/lib/db";
+import mongoose from "mongoose";
 
-export const dynamic = 'force-dynamic'; // Prevent caching issues
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Missing reference" }, { status: 400 });
     }
 
-    // 1. Verify with Paystack
+    // 1. Verify Transaction with Paystack
     const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
     });
@@ -27,11 +28,11 @@ export async function GET(req: Request) {
 
     await connectDB();
 
-    // 2. Check for Duplicate Order (Idempotency)
+    // 2. Idempotency Check: Prevent duplicate orders
+    // We check if an order with this transaction ID already exists.
     const existingOrder = await Order.findOne({ transactionId: reference });
-    
     if (existingOrder) {
-      // Re-populate product details for the UI
+      // If found, return the existing order safely
       const itemIds = existingOrder.items.map((i: any) => i.productId);
       const products = await Product.find({ _id: { $in: itemIds } });
 
@@ -52,46 +53,65 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, order: enrichedOrder });
     }
 
-    // 3. Prepare New Order Data
+    // 3. Extract & Validate Metadata
     const meta = paystackData.data.metadata;
     const cartIds = meta?.cart_ids || [];
 
-    if (!cartIds.length) {
-       return NextResponse.json({ error: "No products found in transaction" }, { status: 400 });
+    // SECURITY: Filter out invalid MongoDB IDs to prevent CastErrors/Crashes
+    const validIds = Array.isArray(cartIds) 
+      ? cartIds.filter((id: string) => mongoose.Types.ObjectId.isValid(id))
+      : [];
+
+    if (validIds.length === 0) {
+       return NextResponse.json({ error: "No valid products found in transaction" }, { status: 400 });
     }
 
-    const products = await Product.find({ _id: { $in: cartIds } });
+    // 4. PRICE VERIFICATION (The "Red Team" Fix)
+    // We fetch the products to get their TRUE price from the database.
+    const products = await Product.find({ _id: { $in: validIds } });
 
-    // Determine Currency & Price
-    const currency = paystackData.data.currency; // NGN or USD
+    // Ensure we found all the products the user claims to have bought
+    if (products.length !== validIds.length) {
+       return NextResponse.json({ error: "Product mismatch or invalid ID" }, { status: 400 });
+    }
 
-    // 4. Create Order (FIXED FIELDS HERE)
+    const paidAmountKobo = paystackData.data.amount;
+    const paidCurrency = paystackData.data.currency; // NGN or USD
+
+    // Calculate the expected total from the Database
+    const expectedTotal = products.reduce((acc: number, product: any) => {
+      const price = paidCurrency === 'NGN' ? product.priceNGN : product.priceUSD;
+      return acc + price;
+    }, 0);
+
+    // Convert our DB total to Kobo/Cents for comparison
+    // We use Math.round to avoid floating point math errors (e.g. 19.9999999)
+    const expectedTotalKobo = Math.round(expectedTotal * 100);
+
+    // Tolerance Check: We allow a tiny difference (e.g., 50 kobo) for rounding variances.
+    // If the difference is huge, it's a hacking attempt.
+    if (Math.abs(paidAmountKobo - expectedTotalKobo) > 50) {
+       console.error(`🚨 FRAUD DETECTED: Paid ${paidAmountKobo}, Expected ${expectedTotalKobo}`);
+       return NextResponse.json({ error: "Payment amount mismatch. Order rejected." }, { status: 400 });
+    }
+
+    // 5. Create Order (Only if price matched)
     const newOrder = await Order.create({
-      // REQUIRED FIELD 1: customerName
-      // Fallback: Use the part of the email before the "@" since we don't ask for a name
-      customerName: paystackData.data.customer.email.split("@")[0],
-      
+      customerName: paystackData.data.customer.email.split("@")[0], // Fallback name
       customerEmail: paystackData.data.customer.email,
-      
       transactionId: reference,
-      
-      // REQUIRED FIELD 2: totalAmount (DB expects 'totalAmount', not 'amount')
-      totalAmount: paystackData.data.amount / 100, 
-      
-      currency: currency,
-      
-      status: "success", // Matches your schema comment "pending, success, failed"
-      
+      totalAmount: paidAmountKobo / 100, 
+      currency: paidCurrency,
+      status: "success",
       items: products.map((p: any) => ({
         productId: p._id,
         title: p.title,
-        // Dynamically choose the correct price based on the currency paid
-        price: currency === 'NGN' ? p.priceNGN : p.priceUSD, 
+        price: paidCurrency === 'NGN' ? p.priceNGN : p.priceUSD, 
         quantity: 1
       }))
     });
 
-    // 5. Format Response
+    // 6. Format Response
     const orderResponse = {
         _id: newOrder._id,
         customerEmail: newOrder.customerEmail,
@@ -108,7 +128,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, order: orderResponse });
 
   } catch (error: any) {
-    console.error("Verification Server Error:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    console.error("Verification Error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

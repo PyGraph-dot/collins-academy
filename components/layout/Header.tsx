@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { ShoppingBag, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/store/cart";
-import { ModeToggle } from "@/components/ui/ModeToggle"; // <--- Import the toggle
+import { ModeToggle } from "@/components/ui/ModeToggle";
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -14,8 +14,8 @@ export default function Header() {
   const pathname = usePathname();
   const { items, toggleCart } = useCart();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Scroll Handler
   useEffect(() => {
     let ticking = false;
     const handleScroll = () => {
@@ -31,17 +31,19 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Lock Body Scroll on Mobile Menu
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = "hidden";
+      // Basic focus management: focus the close button or first link
+      mobileMenuRef.current?.focus();
     } else {
       document.body.style.overflow = "unset";
+      // Return focus to trigger
+      menuButtonRef.current?.focus();
     }
     return () => { document.body.style.overflow = "unset"; };
   }, [mobileMenuOpen]);
 
-  // Close menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
@@ -61,14 +63,12 @@ export default function Header() {
       <header
         className={`fixed top-0 left-0 w-full z-50 h-20 flex items-center transition-all duration-300 ${
            isScrolled 
-             // UPDATED: Use dynamic bg-background/90 and border-border
              ? "bg-background/90 backdrop-blur-md border-b border-border shadow-sm" 
              : "bg-transparent border-b border-transparent"
         }`}
       >
         <div className="w-full max-w-7xl mx-auto px-6 md:px-8 lg:px-12 grid grid-cols-[auto_1fr_auto] items-center">
           
-          {/* 1. LOGO */}
           <div className="justify-self-start z-20">
             <Link 
               href="/" 
@@ -79,7 +79,6 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* 2. DESKTOP NAV */}
           <nav className="hidden md:flex justify-self-center items-center gap-6 md:gap-8">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -103,19 +102,15 @@ export default function Header() {
             })}
           </nav>
 
-          {/* 3. RIGHT ACTIONS (Cart + Toggle + Menu) */}
           <div className="justify-self-end flex items-center gap-3 z-20">
-            
-            {/* Theme Toggle (Hidden on super small screens if needed, usually fine) */}
             <div className="hidden sm:block">
               <ModeToggle />
             </div>
 
-            {/* Cart Button */}
             <button 
                 className="relative group text-foreground hover:text-gold transition-colors p-2 flex items-center justify-center"
                 onClick={toggleCart}
-                aria-label="View Cart"
+                aria-label={`View Cart, ${items.length} items`}
             >
               <ShoppingBag size={22} />
               {items.length > 0 && (
@@ -125,12 +120,13 @@ export default function Header() {
               )}
             </button>
 
-            {/* Mobile Menu Trigger */}
             <button 
               ref={menuButtonRef}
               className="md:hidden text-foreground hover:text-gold transition-colors p-2 flex items-center justify-center"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Menu"
+              aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
             >
               <AnimatePresence mode="wait">
                 {mobileMenuOpen ? (
@@ -158,18 +154,20 @@ export default function Header() {
         </div>
       </header>
 
-      {/* MOBILE MENU OVERLAY */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
+            id="mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            ref={mobileMenuRef}
+            tabIndex={-1} // Allow focus
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            // UPDATED: Dynamic background (Paper in light mode, Void in dark mode)
-            className="fixed inset-0 z-40 bg-background/95 backdrop-blur-md flex flex-col items-center justify-center space-y-8 md:hidden"
+            className="fixed inset-0 z-40 bg-background/95 backdrop-blur-md flex flex-col items-center justify-center space-y-8 md:hidden focus:outline-none"
           >
-            {/* Mobile Toggle (Since we hid it in header on small screens) */}
             <div className="absolute top-24">
               <ModeToggle />
             </div>

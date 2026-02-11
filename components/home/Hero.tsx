@@ -55,7 +55,7 @@ export default function Hero() {
   };
 
   return (
-    // UPDATED: bg-background for theme switching
+    // UPDATED: Theme variables
     <section className="relative min-h-[100dvh] w-full flex flex-col justify-center items-center overflow-hidden bg-background transition-colors duration-500 py-32">
       {dailyContent && (
         <audio 
@@ -67,41 +67,34 @@ export default function Hero() {
         />
       )}
       
-      {/* Noise Overlay - Kept subtle */}
       <div className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-overlay"
            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} 
       />
 
-      {/* Gold Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#d4af37] opacity-5 blur-[100px] md:blur-[150px] rounded-full" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-gold opacity-5 blur-[100px] md:blur-[150px] rounded-full" />
 
       <div className="z-10 text-center px-6 max-w-5xl mx-auto flex flex-col items-center">
         
-        {/* Headline */}
         <motion.h1 
           variants={textContainer}
           initial="hidden"
           animate="show"
-          // UPDATED: text-foreground ensures it turns black in light mode
           className="text-5xl md:text-8xl font-serif font-medium leading-[1.1] md:leading-[0.95] tracking-tight text-foreground mb-8 md:mb-10"
         >
           <div className="overflow-hidden"><motion.span variants={textItem} className="block">The Art of</motion.span></div>
-          <div className="overflow-hidden"><motion.span variants={textItem} className="block italic text-[#d4af37]">Articulation.</motion.span></div>
+          <div className="overflow-hidden"><motion.span variants={textItem} className="block italic text-gold">Articulation.</motion.span></div>
         </motion.h1>
 
-        {/* Subtext */}
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2, duration: 1 }}
-          // UPDATED: text-muted-foreground for softer text
           className="text-muted-foreground text-base md:text-xl font-sans max-w-md md:max-w-lg mx-auto mb-10 md:mb-12 leading-relaxed"
         >
           Don't just speak. Command the room. <br className="hidden md:block" />
           Join 170,000+ students mastering the nuance of English.
         </motion.p>
 
-        {/* Buttons */}
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -111,14 +104,13 @@ export default function Hero() {
           <MagneticButton>
             <button 
               onClick={toggleAudio}
-              // UPDATED: Adaptive borders and backgrounds
               className={`group relative flex items-center gap-4 px-2 py-2 pr-6 rounded-full border transition-all duration-500 ${
                 isPlaying 
-                 ? 'border-[#d4af37]/50 bg-[#d4af37]/10' 
-                 : 'border-border bg-card/5 hover:bg-card/10'
+                  ? 'border-gold/50 bg-gold/10' 
+                  : 'border-border bg-card/5 hover:bg-card/10'
               }`}
             >
-              <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-500 ${isPlaying ? 'bg-[#d4af37] text-black' : 'bg-foreground text-background'}`}>
+              <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-500 ${isPlaying ? 'bg-gold text-black' : 'bg-foreground text-background'}`}>
                 {isPlaying ? <Volume2 size={20} className="animate-pulse" /> : <Play size={20} className="ml-1" />}
               </div>
 
@@ -141,7 +133,6 @@ export default function Hero() {
 
       </div>
       
-      {/* Scroll Indicator */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

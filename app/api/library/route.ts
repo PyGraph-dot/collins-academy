@@ -1,36 +1,43 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Order from "@/models/Order";
-import Product from "@/models/Product"; // Required for population
+import Product from "@/models/Product"; 
+
+// Helper to prevent NoSQL Injection via Regex
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
 
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
 
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
     }
 
     await connectDB();
 
-    // Find all successful orders for this email
+    // SECURITY: Sanitize the input for regex
+    const safeEmailRegex = new RegExp(`^${escapeRegExp(email)}$`, 'i');
+
     const orders = await Order.find({ 
-        customerEmail: { $regex: new RegExp(`^${email}$`, 'i') }, // Case-insensitive match
+        customerEmail: { $regex: safeEmailRegex }, 
         status: "success" 
     })
-    .sort({ createdAt: -1 }) // Newest first
+    .sort({ createdAt: -1 })
     .populate({
         path: "items.productId",
         model: Product,
         select: "title image fileUrl"
     });
 
-    // Flatten the list: We just want a list of books, not a list of orders
     const books: any[] = [];
-    const seenIds = new Set(); // Avoid duplicates if they bought the same book twice
+    const seenIds = new Set();
 
     orders.forEach((order) => {
         order.items.forEach((item: any) => {
+            // Check if product exists (wasn't deleted) and hasn't been added yet
             if (item.productId && !seenIds.has(item.productId._id.toString())) {
                 books.push({
                     _id: item.productId._id,

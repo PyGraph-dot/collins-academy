@@ -14,12 +14,12 @@ const OrderSchema = new Schema(
     ],
     totalAmount: { type: Number, required: true },
     currency: { type: String, default: "NGN" },
-    
-    // <--- NEW FIELD: Stores the rate at the moment of purchase
     exchangeRate: { type: Number, default: 1 }, 
 
     status: { type: String, default: "pending" }, // pending, success, failed
-    transactionId: { type: String },
+    
+    // SECURITY FIX: Ensure transactionId is unique to prevent duplicate billing/fulfillment
+    transactionId: { type: String, unique: true, sparse: true },
   },
   { timestamps: true }
 );
