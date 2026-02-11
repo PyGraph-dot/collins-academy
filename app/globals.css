@@ -5,7 +5,7 @@
 
 @layer base {
   :root {
-    /* === LUXURY LIGHT MODE (Academy Paper) === */
+    /* === FORCE LUXURY LIGHT MODE (Academy Paper) === */
     --background: #F4F1EA;     /* Warm Cream/Paper */
     --foreground: #1A1A1A;     /* Dark Charcoal Ink */
     
@@ -13,29 +13,18 @@
     --card-foreground: #1A1A1A;
     
     --border: #DCD7C9;         /* Subtle darker cream border */
-    --gold: #AA8C2C;           /* Slightly darker gold for visibility on light bg */
+    --gold: #AA8C2C;           /* Gold */
   }
 
-  .dark {
-    /* === ELITE DARK MODE (The Original) === */
-    --background: #0a0a0a;     /* Deep Void */
-    --foreground: #EDEDED;     /* Soft White */
-    
-    --card: #111111;           /* Slightly lighter black */
-    --card-foreground: #FFFFFF;
-    
-    --border: #222222;         /* Dark border */
-    --gold: #D4AF37;           /* Original Gold */
-  }
+  /* DELETED THE .dark BLOCK COMPLETELY */
 }
 
 body {
-  /* Use the variables we just defined */
   @apply bg-background text-foreground transition-colors duration-300;
   overflow-x: hidden;
 }
 
-/* Luxury Smooth Scrollbar (Adaptive) */
+/* Luxury Smooth Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -43,22 +32,14 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #CCC; /* Light mode scrollbar */
   border-radius: 10px;
-}
-.dark ::-webkit-scrollbar-thumb {
-   background: #333;
-}
-/* In light mode, make scrollbar slightly lighter */
-:root:not(.dark) ::-webkit-scrollbar-thumb {
-   background: #CCC;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gold);
 }
 
-/* Fix for Autofill (Adaptive) */
-/* Force the background color to match the theme */
+/* Fix for Autofill (Forces it to match Cream theme) */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
