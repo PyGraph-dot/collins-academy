@@ -1,10 +1,12 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion"; // Import Variants type
 import { Play, Volume2, ArrowRight } from "lucide-react";
 import MagneticButton from "@/components/ui/MagneticButton";
+import { DailyDropType } from "@/lib/types"; 
 
-const textContainer = {
+// FIX 1: Explicitly type the variants
+const textContainer: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -12,40 +14,26 @@ const textContainer = {
   },
 };
 
-const textItem = {
+// FIX 2: Use 'as const' for the ease array
+const textItem: Variants = {
   hidden: { y: 100, opacity: 0 },
   show: { 
     y: 0, 
     opacity: 1, 
     transition: { 
       duration: 1, 
-      ease: [0.22, 1, 0.36, 1] as any 
+      // This 'as const' locks the array as a tuple of 4 numbers (Bezier definition)
+      ease: [0.22, 1, 0.36, 1] as const 
     } 
   },
 };
 
-export default function Hero() {
+export default function Hero({ dailyDrop }: { dailyDrop: DailyDropType | null }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [dailyContent, setDailyContent] = useState<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    async function fetchDaily() {
-      try {
-        const res = await fetch("/api/daily");
-        const data = await res.json();
-        if (data && data.audioUrl) {
-           setDailyContent(data);
-        }
-      } catch (err) {
-        console.error("Failed to load daily audio");
-      }
-    }
-    fetchDaily();
-  }, []);
-
   const toggleAudio = () => {
-    if (!audioRef.current || !dailyContent?.audioUrl) return; 
+    if (!audioRef.current || !dailyDrop?.audioUrl) return; 
 
     if (isPlaying) {
       audioRef.current.pause();
@@ -55,12 +43,11 @@ export default function Hero() {
   };
 
   return (
-    // UPDATED: Theme variables
     <section className="relative min-h-[100dvh] w-full flex flex-col justify-center items-center overflow-hidden bg-background transition-colors duration-500 py-32">
-      {dailyContent && (
+      {dailyDrop && (
         <audio 
            ref={audioRef}
-           src={dailyContent.audioUrl} 
+           src={dailyDrop.audioUrl} 
            onPlay={() => setIsPlaying(true)}
            onPause={() => setIsPlaying(false)}
            onEnded={() => setIsPlaying(false)}
@@ -104,11 +91,12 @@ export default function Hero() {
           <MagneticButton>
             <button 
               onClick={toggleAudio}
+              disabled={!dailyDrop} 
               className={`group relative flex items-center gap-4 px-2 py-2 pr-6 rounded-full border transition-all duration-500 ${
                 isPlaying 
                   ? 'border-gold/50 bg-gold/10' 
                   : 'border-border bg-card/5 hover:bg-card/10'
-              }`}
+              } ${!dailyDrop ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <div className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-500 ${isPlaying ? 'bg-gold text-black' : 'bg-foreground text-background'}`}>
                 {isPlaying ? <Volume2 size={20} className="animate-pulse" /> : <Play size={20} className="ml-1" />}
@@ -133,6 +121,7 @@ export default function Hero() {
 
       </div>
       
+      {/* Scroll Indicator */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

@@ -4,9 +4,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ShoppingBag, RotateCcw } from "lucide-react";
 import Image from "next/image";
+// Expert: We import the shared types to ensure type safety across the app
+import { ProductType, CartItemType } from "@/lib/types"; 
 
 interface BookProps {
-  book: any;
+  // Flexibility: Accepts a full Product (from Shop) or a partial Item (from Cart)
+  book: ProductType | CartItemType;
   addItem: (item: any) => void;
   currency: string;
 }
@@ -15,7 +18,6 @@ export default function Book3D({ book, addItem, currency }: BookProps) {
   const [isFlipped, setIsFlipped] = useState(false);
 
   return (
-    // RESPONSIVE HEIGHT + THEME AWARE
     <div 
       className="group relative w-full h-[360px] md:h-[520px] flex-shrink-0 perspective-1000 cursor-pointer"
       onMouseEnter={() => setIsFlipped(true)}
@@ -29,21 +31,19 @@ export default function Book3D({ book, addItem, currency }: BookProps) {
         transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
         style={{ transformStyle: "preserve-3d" }}
       >
-        
         {/* === FRONT FACE === */}
         <div 
           className="absolute inset-0 bg-card border border-border p-3 md:p-4 rounded-xl md:rounded-2xl flex flex-col justify-between backface-hidden shadow-sm transition-colors"
           style={{ backfaceVisibility: "hidden" }} 
         >
-          {/* IMAGE CONTAINER */}
           <div className="relative w-full h-[180px] md:h-[320px] bg-background/50 dark:bg-black/40 rounded-lg md:rounded-xl overflow-hidden mb-3 md:mb-6 flex items-center justify-center border border-border transition-colors">
             {book.image ? (
-              <Image
+              <Image 
                 src={book.image} 
-                alt={book.title}
+                alt={book.title} 
                 fill 
-                className="object-contain p-2 md:p-4"
-                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-contain p-2 md:p-4" 
+                sizes="(max-width: 768px) 50vw, 33vw" 
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
@@ -57,7 +57,6 @@ export default function Book3D({ book, addItem, currency }: BookProps) {
             </div>
           </div>
 
-          {/* CONTENT SECTION */}
           <div className="flex-1 flex flex-col justify-end">
               <div className="flex justify-between items-start mb-2 md:mb-3">
                  <span className="text-[8px] md:text-[10px] uppercase tracking-widest text-muted-foreground truncate max-w-[60%]">
@@ -91,7 +90,7 @@ export default function Book3D({ book, addItem, currency }: BookProps) {
             <h4 className="text-sm md:text-lg font-serif text-card-foreground mb-2 md:mb-4">Synopsis</h4>
             
             <p className="text-muted-foreground text-xs md:text-sm leading-relaxed mb-4 md:mb-8 line-clamp-6 md:line-clamp-[8]">
-              {book.description || "Master the art of spoken influence. This resource deconstructs the mechanics of elite articulation."}
+              {(book as any).description || "Master the art of spoken influence. This resource deconstructs the mechanics of elite articulation."}
             </p>
 
             <div className="text-lg md:text-2xl font-serif text-card-foreground mb-4 md:mb-8">
@@ -109,7 +108,6 @@ export default function Book3D({ book, addItem, currency }: BookProps) {
               Add
             </button>
         </div>
-
       </motion.div>
     </div>
   );
