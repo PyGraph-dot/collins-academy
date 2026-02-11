@@ -1,59 +1,69 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, Home, Loader2, Download } from "lucide-react";
+import { CheckCircle, Home, Loader2, Download, BookOpen } from "lucide-react";
 import { useCart } from "@/store/cart";
+import Header from "@/components/layout/Header";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { clearCart } = useCart();
-  const reference = searchParams.get("reference"); // Get Paystack Transaction ID
+  const reference = searchParams.get("reference");
   const [verifying, setVerifying] = useState(true);
   const [order, setOrder] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   useEffect(() => {
     if (!reference) {
-      setError("No transaction reference found. Payment may have failed.");
+      setError("No transaction reference found.");
       setVerifying(false);
       return;
     }
 
     async function verifyPayment() {
       try {
-        console.log("🔄 Verifying payment...");
-        
-        // Call our verification API
         const res = await fetch(`/api/payment/verify?reference=${reference}`);
         const data = await res.json();
 
-        if (!res.ok) {
-          throw new Error(data.error || "Payment verification failed");
-        }
-
-        console.log("✓ Payment verified!", data);
-        
-        // Order created successfully
+        if (!res.ok) throw new Error(data.error || "Payment verification failed");
         setOrder(data.order);
         clearCart();
       } catch (err: any) {
-        console.error("❌ Verification error:", err);
         setError(err.message);
       } finally {
         setVerifying(false);
       }
     }
-
     verifyPayment();
   }, [reference, clearCart]);
 
+  const handleDownload = async (url: string, title: string) => {
+    try {
+      setDownloading(title);
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${title}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      window.open(url, '_blank');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   if (verifying) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-white space-y-4">
-        <Loader2 className="animate-spin text-[#d4af37]" size={48} />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-foreground space-y-4">
+        <Loader2 className="animate-spin text-gold" size={48} />
         <h2 className="text-xl font-serif animate-pulse">Verifying Payment...</h2>
       </div>
     );
@@ -61,75 +71,75 @@ function SuccessContent() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center text-center max-w-lg mx-auto bg-red-500/10 p-8 rounded-2xl border border-red-500/30">
-        <h1 className="text-2xl font-serif text-red-400 mb-4">Verification Failed</h1>
-        <p className="text-gray-300 mb-6">{error}</p>
-        <Link 
-          href="/shop"
-          className="flex items-center gap-2 bg-[#d4af37] text-black px-8 py-3 rounded-full font-bold hover:bg-white transition-colors"
-        >
-          <Home size={18} /> Back to Shop
+      <div className="flex flex-col items-center text-center max-w-lg mx-auto bg-red-500/10 p-8 rounded-2xl border border-red-500/30 mt-20">
+        <h1 className="text-2xl font-serif text-red-500 mb-4">Verification Failed</h1>
+        <p className="text-foreground mb-6">{error}</p>
+        <Link href="/shop" className="px-8 py-3 bg-gold text-black rounded-full font-bold hover:bg-foreground hover:text-background transition-colors">
+           Back to Shop
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center text-center max-w-lg mx-auto bg-[#111] p-8 rounded-2xl border border-white/10 shadow-2xl">
+    <div className="flex flex-col items-center text-center max-w-lg mx-auto bg-card p-8 rounded-2xl border border-border shadow-2xl mt-20 mb-20">
       <div className="bg-green-500/10 p-4 rounded-full mb-6">
         <CheckCircle className="text-green-500" size={64} />
       </div>
       
-      <h1 className="text-3xl font-serif text-white mb-2">Payment Successful!</h1>
-      <p className="text-gray-400 mb-8">
-        Your transaction reference is: <br />
-        <span className="text-[#d4af37] font-mono text-sm">{reference}</span>
+      <h1 className="text-3xl font-serif text-foreground mb-2">Payment Successful!</h1>
+      <p className="text-muted-foreground mb-8 text-sm">
+        Reference: <span className="text-gold font-mono">{reference}</span>
       </p>
 
       {order && (
-        <div className="bg-white/5 p-6 rounded-xl w-full mb-8 border border-white/5 text-left">
-          <h3 className="text-white font-bold mb-4">Order Details</h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Order ID:</span>
-              <span className="text-white font-mono">{order._id?.toString().slice(-8)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Items:</span>
-              <span className="text-white">{order.items?.length || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Total:</span>
-              <span className="text-[#d4af37] font-bold">
-                {order.currency === 'NGN' ? '₦' : '$'}{order.totalAmount?.toLocaleString()}
-              </span>
-            </div>
-          </div>
+        <div className="w-full text-left space-y-6">
+           {/* Items List */}
+           <div className="bg-background/50 border border-border rounded-xl p-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Your Downloads</h3>
+              <div className="space-y-4">
+                {order.items.map((item: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between gap-4 border-b border-border pb-4 last:border-0 last:pb-0">
+                     <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-10 h-12 bg-background border border-border rounded flex items-center justify-center flex-shrink-0">
+                           <BookOpen size={16} className="text-muted-foreground"/>
+                        </div>
+                        <div className="truncate">
+                           <p className="font-bold text-foreground text-sm truncate">{item.title}</p>
+                           <p className="text-[10px] text-muted-foreground uppercase">PDF Guide</p>
+                        </div>
+                     </div>
+                     
+                     {item.productId?.fileUrl ? (
+                       <button 
+                         onClick={() => handleDownload(item.productId.fileUrl, item.title)}
+                         disabled={downloading === item.title}
+                         className="flex-shrink-0 bg-gold text-black p-2 rounded-lg hover:bg-foreground hover:text-background transition-colors"
+                       >
+                         {downloading === item.title ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
+                       </button>
+                     ) : <span className="text-[10px] text-red-500">Error</span>}
+                  </div>
+                ))}
+              </div>
+           </div>
         </div>
       )}
 
-      <div className="bg-white/5 p-6 rounded-xl w-full mb-8 border border-white/5">
-        <h3 className="text-white font-bold mb-2">What happens next?</h3>
-        <p className="text-sm text-gray-400 leading-relaxed">
-          Your digital files have been sent to your email address. 
-          Please check your inbox (and spam folder) for the download links.
-        </p>
+      <div className="mt-8">
+        <Link href="/" className="flex items-center justify-center gap-2 bg-foreground text-background px-8 py-3 rounded-full font-bold hover:bg-gold hover:text-black transition-colors">
+          <Home size={18} /> Return Home
+        </Link>
       </div>
-
-      <Link 
-        href="/"
-        className="flex items-center gap-2 bg-[#d4af37] text-black px-8 py-3 rounded-full font-bold hover:bg-white transition-colors"
-      >
-        <Home size={18} /> Back to Library
-      </Link>
     </div>
   );
 }
 
 export default function SuccessPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] pt-20 px-6 flex items-center justify-center">
-      <Suspense fallback={<div className="text-white">Loading...</div>}>
+    <div className="min-h-screen bg-background px-6">
+      <Header />
+      <Suspense fallback={<div className="pt-40 text-center text-foreground">Loading...</div>}>
         <SuccessContent />
       </Suspense>
     </div>
