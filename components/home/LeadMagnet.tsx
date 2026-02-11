@@ -15,10 +15,11 @@ export default function LeadMagnet() {
   };
 
   return (
-    <section className="py-24 px-6 bg-[#0a0a0a] relative overflow-hidden">
+    // UPDATED: Dynamic Background
+    <section className="py-24 px-6 bg-background relative overflow-hidden transition-colors duration-300">
       
       {/* Background Decor (Gold Mesh) */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#d4af37] opacity-[0.03] blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold opacity-[0.05] dark:opacity-[0.03] blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-4xl mx-auto relative z-10">
         <motion.div 
@@ -26,29 +27,30 @@ export default function LeadMagnet() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.8 }}
-          className="bg-[#111] border border-white/10 rounded-2xl p-8 md:p-12 md:flex items-center gap-12 shadow-2xl overflow-hidden relative"
+          // UPDATED: Card background and border
+          className="bg-card border border-border rounded-2xl p-8 md:p-12 md:flex items-center gap-12 shadow-2xl overflow-hidden relative"
         >
           {/* Subtle Grain Overlay on the card */}
           <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://upload.wikimedia.org/wikipedia/commons/7/76/Noise.png')]" />
 
           {/* Left: Content */}
           <div className="flex-1 relative z-10 mb-8 md:mb-0">
-            <span className="text-[#d4af37] font-bold tracking-widest text-xs uppercase mb-2 block">
+            <span className="text-gold font-bold tracking-widest text-xs uppercase mb-2 block">
               Free Resource
             </span>
-            <h2 className="text-3xl md:text-4xl font-serif text-white mb-4">
+            <h2 className="text-3xl md:text-4xl font-serif text-card-foreground mb-4">
               Are you saying these <br />
-              <span className="italic text-gray-400">50 words</span> wrong?
+              <span className="italic text-muted-foreground">50 words</span> wrong?
             </h2>
-            <p className="text-gray-400 text-sm md:text-base mb-6 leading-relaxed">
+            <p className="text-muted-foreground text-sm md:text-base mb-6 leading-relaxed">
               Download the official Collins pronunciation cheatsheet. Correct the common mistakes that undermine your authority.
             </p>
             
             {/* Checklist */}
             <ul className="space-y-3">
               {['Vowel Sounds Guide', 'Stress Patterns', 'Instant PDF Download'].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm text-gray-300">
-                  <div className="w-5 h-5 rounded-full bg-[#d4af37]/10 flex items-center justify-center text-[#d4af37]">
+                <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <div className="w-5 h-5 rounded-full bg-gold/10 flex items-center justify-center text-gold">
                     <Check size={12} strokeWidth={3} />
                   </div>
                   {item}
@@ -59,12 +61,13 @@ export default function LeadMagnet() {
 
           {/* Right: Input Form */}
           <div className="w-full md:w-[380px] relative z-10">
-            <form onSubmit={handleSubmit} className="bg-white/5 p-6 rounded-xl border border-white/10 backdrop-blur-sm">
+            {/* UPDATED: Form container using bg-background/50 for contrast against bg-card */}
+            <form onSubmit={handleSubmit} className="bg-background/50 p-6 rounded-xl border border-border backdrop-blur-sm shadow-sm">
               <div className="space-y-4">
                 <div>
                   <label htmlFor="email" className="sr-only">Email Address</label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-[#d4af37] transition-colors" size={18} />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-gold transition-colors" size={18} />
                     <input 
                       type="email" 
                       id="email"
@@ -72,7 +75,8 @@ export default function LeadMagnet() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email"
-                      className="w-full !bg-[#0a0a0a] border border-white/10 text-white text-sm rounded-lg py-3.5 pl-12 pr-4 focus:outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37] transition-all placeholder:text-gray-600 appearance-none"
+                      // UPDATED: Input colors
+                      className="w-full bg-background border border-border text-foreground text-sm rounded-lg py-3.5 pl-12 pr-4 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all placeholder:text-muted-foreground appearance-none"
                     />
                   </div>
                 </div>
@@ -80,7 +84,7 @@ export default function LeadMagnet() {
                 <button 
                   type="submit"
                   disabled={status !== "idle"}
-                  className="w-full bg-[#d4af37] hover:bg-[#b5952f] text-black font-bold py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="w-full bg-gold hover:bg-gold/90 text-black font-bold py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {status === "loading" ? (
                     <span className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -91,7 +95,7 @@ export default function LeadMagnet() {
                   )}
                 </button>
               </div>
-              <p className="text-center text-xs text-gray-500 mt-4">
+              <p className="text-center text-xs text-muted-foreground mt-4">
                 Join 170k+ students. Unsubscribe anytime.
               </p>
             </form>
