@@ -142,7 +142,11 @@ export default function CartDrawer() {
                         </p>
                       </div>
                       
-                      <button onClick={() => removeItem(item._id)} className="text-muted-foreground hover:text-red-500 p-2">
+                      <button 
+                        type="button" 
+                        onClick={() => removeItem(item._id)} 
+                        className="text-muted-foreground hover:text-red-500 p-2"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>

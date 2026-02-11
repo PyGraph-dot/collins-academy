@@ -7,6 +7,15 @@ import Link from "next/link";
 import { useCart } from "@/store/cart";
 import Header from "@/components/layout/Header"; // Add Header for consistency
 
+// 1. Define what an "Order Item" looks like
+interface OrderItem {
+  title: string;
+  productId: {
+    image?: string;
+    fileUrl?: string;
+  };
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams();
   const reference = searchParams.get("reference");
@@ -109,7 +118,7 @@ function SuccessContent() {
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6">Your Downloads</h3>
         
         <div className="space-y-4">
-          {order.items.map((item: any, i: number) => (
+          {order.items.map((item: OrderItem, i: number) => (
             <div key={i} className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50 p-4 rounded-xl border border-border">
               <div className="flex items-center gap-4">
                  <div className="w-12 h-16 bg-background rounded overflow-hidden flex-shrink-0 border border-border">
@@ -125,12 +134,12 @@ function SuccessContent() {
                  </div>
               </div>
 
-              {item.productId?.fileUrl ? (
-                <button 
-                  onClick={() => handleDownload(item.productId.fileUrl, item.title)}
-                  disabled={downloading === item.title}
-                  className="flex items-center gap-2 bg-gold text-black px-5 py-3 rounded-lg font-bold text-sm hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
-                >
+               {item.productId?.fileUrl ? (
+                 <button 
+                   onClick={() => handleDownload(item.productId.fileUrl!, item.title)}
+                   disabled={downloading === item.title}
+                   className="flex items-center gap-2 bg-gold text-black px-5 py-3 rounded-lg font-bold text-sm hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
+                 >
                   {downloading === item.title ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
                   <span>{downloading === item.title ? "Saving..." : "Download"}</span>
                 </button>

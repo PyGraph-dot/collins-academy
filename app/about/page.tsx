@@ -54,7 +54,8 @@ export default function About() {
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.6 }}
               >
-                In a globalized world, the way you articulate your thoughts determines your value. It dictates whether you are heard, respected, and paid. My mission is not to teach you "grammar"—it is to teach you **authority**.
+                In a globalized world, the way you articulate your thoughts determines your value. 
+                It dictates whether you are heard, respected, and paid. My mission is not to teach you &quot;grammar&quot;—it is to teach you <strong>authority</strong>.
               </motion.p>
               <motion.p 
                 initial={{ opacity: 0 }} 
