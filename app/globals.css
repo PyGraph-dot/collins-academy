@@ -5,46 +5,34 @@
 
 @layer base {
   :root {
-    /* === FORCE LUXURY LIGHT MODE (Academy Paper) === */
-    --background: #F4F1EA;     /* Warm Cream/Paper */
-    --foreground: #1A1A1A;     /* Dark Charcoal Ink */
-    
-    --card: #FFFFFF;           /* Pure White Cards */
+    /* === LUXURY LIGHT MODE (Academy Paper) === */
+    --background: #F4F1EA;     /* Warm Cream */
+    --foreground: #1A1A1A;     /* Charcoal */
+    --card: #FFFFFF;
     --card-foreground: #1A1A1A;
-    
-    --border: #DCD7C9;         /* Subtle darker cream border */
-    --gold: #AA8C2C;           /* Gold */
+    --border: #DCD7C9;
+    --gold: #AA8C2C;
   }
 
-  /* DELETED THE .dark BLOCK COMPLETELY */
+  .dark {
+    /* === ELITE DARK MODE (Restored) === */
+    --background: #050505;     /* Deepest Black (OLED friendly) */
+    --foreground: #FFFFFF;     /* Pure White for max contrast */
+    --card: #121212;
+    --card-foreground: #FFFFFF;
+    --border: #333333;
+    --gold: #D4AF37;           /* Bright Gold */
+  }
 }
 
 body {
-  @apply bg-background text-foreground transition-colors duration-300;
-  overflow-x: hidden;
+  @apply bg-background text-foreground;
+  font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Luxury Smooth Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #CCC; /* Light mode scrollbar */
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--gold);
-}
-
-/* Fix for Autofill (Forces it to match Cream theme) */
-input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
-input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px var(--background) inset !important;
-    -webkit-text-fill-color: var(--foreground) !important;
-    transition: background-color 5000s ease-in-out 0s;
-}
+/* Ensure Scrollbar adapts to mode */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CCC; border-radius: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: #333; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
