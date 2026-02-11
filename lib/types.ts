@@ -22,8 +22,8 @@ export type CartItemType = Pick<ProductType, '_id' | 'title' | 'priceNGN' | 'pri
 
 // The Daily Drop Shape
 export interface DailyDropType {
+  _id: string;
+  word: string;
   audioUrl: string;
-  title?: string;
-  transcript?: string;
-  date: string;
+  date: string; // "lean()" + JSON stringify converts the Date object to a string
 }
