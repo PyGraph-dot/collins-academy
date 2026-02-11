@@ -1,20 +1,14 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class", // Keep this. Since we never add "dark" class, it stays light.
+  darkMode: ["class"], // Keep this as "class" to allow System/Toggle switching
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  safelist: [
-    "bg-orange-600",
-    "bg-blue-600",
-    "bg-emerald-600",
-    "bg-purple-600",
-    "bg-red-600",
-  ],
+  safelist: ["dark"], // Force Tailwind to generate dark variants
   theme: {
     extend: {
       colors: {
@@ -29,11 +23,6 @@ const config: Config = {
           400: "#E5C05F",
           500: "#D4AF37", 
           600: "#AA8C2C",
-        },
-        charcoal: {
-          800: "#1A1A1A",
-          900: "#0A0A0A",
-          950: "#050505",
         },
       },
       fontFamily: {
