@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"], // <--- CRITICAL: Enables manual toggling
+  darkMode: "class", // Keep this. Since we never add "dark" class, it stays light.
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -18,16 +18,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // --- DYNAMIC THEME COLORS ---
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: "var(--card)",
         "card-foreground": "var(--card-foreground)",
         border: "var(--border)",
-        
-        // Custom Gold (Kept consistent)
         gold: {
-          DEFAULT: "var(--gold)", // Dynamic gold
+          DEFAULT: "var(--gold)", 
           100: "#F9F1D8",
           400: "#E5C05F",
           500: "#D4AF37", 
