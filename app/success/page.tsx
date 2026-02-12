@@ -2,17 +2,18 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, CheckCircle, Download, ArrowRight, BookOpen } from "lucide-react";
+import { Loader2, CheckCircle, Download, ArrowRight, BookOpen, Music, Video, Lock } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/store/cart";
-import Header from "@/components/layout/Header"; // Add Header for consistency
+import Header from "@/components/layout/Header";
 
-// 1. Define what an "Order Item" looks like
+// Enhanced Interface to include Product Type
 interface OrderItem {
   title: string;
   productId: {
     image?: string;
     fileUrl?: string;
+    productType?: 'ebook' | 'audio' | 'video';
   };
 }
 
@@ -56,21 +57,26 @@ function SuccessContent() {
     verifyPayment();
   }, [reference]);
 
-  const handleDownload = async (url: string, title: string) => {
+  // --- SECURE DOWNLOAD HANDLER ---
+  const handleDownload = async (fileUrl: string, title: string) => {
     try {
       setDownloading(title);
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
+
+      // 1. Construct the Secure Proxy URL
+      // We pass the Order ID so the server can verify this user actually paid
+      const secureUrl = `/api/secure-download?file=${encodeURIComponent(fileUrl)}&orderId=${order._id}`;
+      
+      // 2. Trigger Download via Hidden Link (Reliable for large files)
       const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `${title}.pdf`;
+      link.href = secureUrl;
+      link.setAttribute('download', `${title}`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
+
     } catch (e) {
-      window.open(url, '_blank');
+      console.error("Download failed", e);
+      alert("Download failed. Please contact support.");
     } finally {
       setDownloading(null);
     }
@@ -89,9 +95,9 @@ function SuccessContent() {
     return (
       <div className="max-w-2xl mx-auto text-center pt-20">
         <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500">
-          <CheckCircle size={40} />
+          <Lock size={40} />
         </div>
-        <h1 className="text-4xl font-serif text-foreground mb-4">Payment Verification Failed</h1>
+        <h1 className="text-3xl md:text-4xl font-serif text-foreground mb-4">Verification Failed</h1>
         <p className="text-red-400 mb-8">{error}</p>
         <Link href="/shop" className="px-6 py-3 bg-gold text-black font-bold rounded-lg hover:bg-white transition-colors">
           Return to Shop
@@ -103,56 +109,86 @@ function SuccessContent() {
   if (!order) return null;
 
   return (
-    <div className="max-w-2xl mx-auto text-center pt-20 pb-20">
+    <div className="max-w-3xl mx-auto text-center pt-20 pb-20">
       <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-8 text-green-500">
          <CheckCircle size={40} />
       </div>
 
       <h1 className="text-4xl font-serif text-foreground mb-4">Payment Successful.</h1>
-      <p className="text-muted-foreground mb-12">
-        Thank you for your purchase. Your resources are ready for immediate download below.
+      <p className="text-muted-foreground mb-12 max-w-lg mx-auto">
+        Welcome to the Academy. Your secure resources have been unlocked below.
       </p>
 
-      {/* UPDATED: Card Container */}
-      <div className="bg-card border border-border rounded-2xl p-8 text-left shadow-lg">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-6">Your Downloads</h3>
+      {/* DOWNLOADS CARD */}
+      <div className="bg-card border border-border rounded-2xl p-6 md:p-8 text-left shadow-2xl">
+        <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Unlocked Resources</h3>
+            <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-1 rounded-full border border-green-500/20">PAID</span>
+        </div>
         
         <div className="space-y-4">
-          {order.items.map((item: OrderItem, i: number) => (
-            <div key={i} className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50 p-4 rounded-xl border border-border">
-              <div className="flex items-center gap-4">
-                 <div className="w-12 h-16 bg-background rounded overflow-hidden flex-shrink-0 border border-border">
-                    {item.productId?.image ? (
-                      <img src={item.productId.image} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center"><BookOpen size={16} className="text-muted-foreground"/></div>
-                    )}
-                 </div>
-                 <div>
-                   <h4 className="font-bold font-serif text-foreground">{item.title}</h4>
-                   <p className="text-xs text-muted-foreground uppercase tracking-wider">PDF Guide</p>
-                 </div>
-              </div>
+          {order.items.map((item: OrderItem, i: number) => {
+            // Determine Type for Icon & Label
+            const type = item.productId?.productType || 'ebook';
+            
+            return (
+              <div key={i} className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50 p-4 rounded-xl border border-border hover:border-gold/30 transition-colors">
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-16 bg-background rounded overflow-hidden flex-shrink-0 border border-border relative">
+                      {item.productId?.image ? (
+                        <img src={item.productId.image} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                            {type === 'video' ? <Video size={16} className="text-gray-500"/> : 
+                             type === 'audio' ? <Music size={16} className="text-gray-500"/> : 
+                             <BookOpen size={16} className="text-gray-500"/>}
+                        </div>
+                      )}
+                   </div>
+                   <div>
+                     <h4 className="font-bold font-serif text-foreground text-lg">{item.title}</h4>
+                     <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
+                        {type === 'video' && <Video size={12} />}
+                        {type === 'audio' && <Music size={12} />}
+                        {type === 'ebook' && <BookOpen size={12} />}
+                        <span>{type === 'ebook' ? 'PDF Guide' : type === 'video' ? 'Video Course' : 'Audio Drill'}</span>
+                     </div>
+                   </div>
+                </div>
 
-               {item.productId?.fileUrl ? (
-                 <button 
-                   onClick={() => handleDownload(item.productId.fileUrl!, item.title)}
-                   disabled={downloading === item.title}
-                   className="flex items-center gap-2 bg-gold text-black px-5 py-3 rounded-lg font-bold text-sm hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
-                 >
-                  {downloading === item.title ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
-                  <span>{downloading === item.title ? "Saving..." : "Download"}</span>
-                </button>
-              ) : (
-                <span className="text-xs text-red-500">File not available</span>
-              )}
-            </div>
-          ))}
+                 {item.productId?.fileUrl ? (
+                   <button 
+                     onClick={() => handleDownload(item.productId.fileUrl!, item.title)}
+                     disabled={!!downloading}
+                     className="flex items-center justify-center gap-2 bg-gold text-black px-6 py-3 rounded-lg font-bold text-sm hover:bg-white transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
+                   >
+                    {downloading === item.title ? (
+                        <>
+                            <Loader2 className="animate-spin" size={18} />
+                            <span>Securing...</span>
+                        </>
+                    ) : (
+                        <>
+                            <Download size={18} />
+                            <span>Download</span>
+                        </>
+                    )}
+                  </button>
+                ) : (
+                  <span className="text-xs text-red-500 bg-red-500/10 px-3 py-1 rounded-full">Processing...</span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-8 pt-6 border-t border-border text-center">
-           <p className="text-xs text-muted-foreground mb-2">A receipt has been sent to <span className="text-foreground">{order.customerEmail}</span></p>
-           <p className="text-[10px] text-muted-foreground">Order Ref: {order.transactionId || order._id}</p>
+           <p className="text-xs text-muted-foreground mb-2">
+                Receipt sent to <span className="text-foreground font-bold">{order.customerEmail}</span>
+           </p>
+           <p className="text-[10px] text-muted-foreground opacity-50">
+                Transaction ID: {order.transactionId || order._id}
+           </p>
         </div>
       </div>
 
@@ -165,7 +201,6 @@ function SuccessContent() {
 
 export default function SuccessPage() {
   return (
-    // UPDATED: Main background
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300 px-6">
       <Header />
       <Suspense fallback={
