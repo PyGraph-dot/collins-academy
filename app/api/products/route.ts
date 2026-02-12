@@ -14,18 +14,13 @@ export async function GET(req: Request) {
       if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
       return NextResponse.json(product);
     } else {
-      // Find ALL products, even if they have some missing fields
-      // We sort by creation date to show newest first
+      // FIX: Find ALL products, even if they have broken/missing fields
       const products = await Product.find({}).sort({ createdAt: -1 });
-      
       return NextResponse.json(products);
     }
   } catch (error: any) {
     console.error("❌ DATABASE ERROR:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch products", details: error.message }, 
-      { status: 500 }
-    ); 
+    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 }); 
   }
 }
 
@@ -34,33 +29,22 @@ export async function POST(req: Request) {
     const body = await req.json();
     await connectDB();
     
-    // DEBUG: Log exactly what we received
-    console.log("📝 Incoming Product Data:", body);
-
-    // Validation: Ensure description is not empty string
-    if (!body.description || body.description.trim() === "") {
-        return NextResponse.json({ error: "Description is required" }, { status: 400 });
-    }
-
+    // FIX: Fallback values ensure valid database entry
     const newProduct = await Product.create({
         title: body.title,
         description: body.description,
         priceNGN: Number(body.priceNGN),
         priceUSD: Number(body.priceUSD),
         image: body.image,
-        
-        // Critical Fix: Ensure we use the Type from the wizard, or default to ebook
-        productType: body.productType || 'ebook', 
-        
+        productType: body.productType || 'ebook', // Default to ebook if missing
         fileUrl: body.fileUrl,
-        duration: body.duration || "", // Optional metadata
+        duration: body.duration || "", 
         isPublished: true
     });
 
     return NextResponse.json({ message: "Product Created", product: newProduct }, { status: 201 });
   } catch (error: any) {
     console.error("❌ CREATE ERROR:", error);
-    // Send exact error to frontend for debugging
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
