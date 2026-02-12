@@ -11,16 +11,19 @@ export async function GET(req: Request) {
     
     if (id) {
       const product = await Product.findById(id);
+      if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
       return NextResponse.json(product);
     } else {
-      // Sort by newest first
-      const products = await Product.find({ isPublished: true }).sort({ createdAt: -1 });
+      // Find ALL products, even if they have some missing fields
+      // We sort by creation date to show newest first
+      const products = await Product.find({}).sort({ createdAt: -1 });
+      
       return NextResponse.json(products);
     }
   } catch (error: any) {
-    console.error("❌ DATABASE ERROR:", error.message);
+    console.error("❌ DATABASE ERROR:", error);
     return NextResponse.json(
-      { error: "Database Connection Failed", details: error.message }, 
+      { error: "Failed to fetch products", details: error.message }, 
       { status: 500 }
     ); 
   }
@@ -31,7 +34,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     await connectDB();
     
-    console.log("Creating Product:", body.title, body.productType);
+    // DEBUG: Log exactly what we received
+    console.log("📝 Incoming Product Data:", body);
+
+    // Validation: Ensure description is not empty string
+    if (!body.description || body.description.trim() === "") {
+        return NextResponse.json({ error: "Description is required" }, { status: 400 });
+    }
 
     const newProduct = await Product.create({
         title: body.title,
@@ -39,17 +48,19 @@ export async function POST(req: Request) {
         priceNGN: Number(body.priceNGN),
         priceUSD: Number(body.priceUSD),
         image: body.image,
-        productType: body.productType, // 'ebook' | 'audio' | 'video'
+        
+        // Critical Fix: Ensure we use the Type from the wizard, or default to ebook
+        productType: body.productType || 'ebook', 
+        
         fileUrl: body.fileUrl,
-        previewUrl: body.previewUrl,
-        duration: body.duration,
-        fileSize: body.fileSize,
+        duration: body.duration || "", // Optional metadata
         isPublished: true
     });
 
     return NextResponse.json({ message: "Product Created", product: newProduct }, { status: 201 });
   } catch (error: any) {
     console.error("❌ CREATE ERROR:", error);
+    // Send exact error to frontend for debugging
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
