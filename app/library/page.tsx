@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Loader2, Download, BookOpen, AlertCircle, ShoppingBag, Play, Headphones, X, Lock } from "lucide-react";
+import { Search, Loader2, Download, BookOpen, AlertCircle, ShoppingBag, Play, Headphones, X, Lock, Video, Music } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
