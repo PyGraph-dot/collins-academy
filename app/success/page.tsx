@@ -57,19 +57,28 @@ function SuccessContent() {
     verifyPayment();
   }, [reference]);
 
-  // --- SECURE DOWNLOAD HANDLER ---
-  const handleDownload = async (fileUrl: string, title: string) => {
+  // --- POLY-FORMAT SECURE DOWNLOAD HANDLER ---
+  const handleDownload = async (fileUrl: string, title: string, productType: string = 'ebook') => {
     try {
       setDownloading(title);
 
-      // 1. Construct the Secure Proxy URL
+      // 1. Determine Correct Extension based on product type
+      let ext = 'pdf';
+      if (productType === 'video') ext = 'mp4';
+      if (productType === 'audio') ext = 'mp3';
+
+      // 2. Clean the title to prevent ".mp4.pdf" mutations or broken characters
+      const cleanTitle = title.replace(/\.[^/.]+$/, "").replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const finalFileName = `${cleanTitle}.${ext}`;
+
+      // 3. Construct the Secure Proxy URL
       // We pass the Order ID so the server can verify this user actually paid
       const secureUrl = `/api/secure-download?file=${encodeURIComponent(fileUrl)}&orderId=${order._id}`;
       
-      // 2. Trigger Download via Hidden Link (Reliable for large files)
+      // 4. Trigger Download via Hidden Link (Reliable for large files)
       const link = document.createElement('a');
       link.href = secureUrl;
-      link.setAttribute('download', `${title}`);
+      link.setAttribute('download', finalFileName);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -158,7 +167,8 @@ function SuccessContent() {
 
                  {item.productId?.fileUrl ? (
                    <button 
-                     onClick={() => handleDownload(item.productId.fileUrl!, item.title)}
+                     // Pass the 'type' to ensure it gets the right extension
+                     onClick={() => handleDownload(item.productId.fileUrl!, item.title, type)}
                      disabled={!!downloading}
                      className="flex items-center justify-center gap-2 bg-gold text-black px-6 py-3 rounded-lg font-bold text-sm hover:bg-white transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
                    >
