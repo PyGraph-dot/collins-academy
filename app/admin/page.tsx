@@ -27,9 +27,12 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<Stats>({ totalProducts: 0, totalRevenue: 0, totalOrders: 0 });
   const [loading, setLoading] = useState(true);
+  
+  // FILTERS
   const [filter, setFilter] = useState<'all' | 'video' | 'audio' | 'ebook'>('all');
   const [search, setSearch] = useState("");
 
+  // DAILY DROP STATE (Restored)
   const [dailyWord, setDailyWord] = useState("");
   const [dailyAudio, setDailyAudio] = useState("");
   const [dailySaving, setDailySaving] = useState(false);
@@ -68,6 +71,7 @@ export default function AdminDashboard() {
     }
   }
 
+  // DAILY DROP SAVER (Restored)
   async function saveDailyDrop() {
     if (!dailyWord || !dailyAudio) return alert("Please enter a word and upload audio.");
     setDailySaving(true);
@@ -86,7 +90,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // POLY-FORMAT FIX: Treat legacy "undefined" items as ebooks so they don't disappear
+  // FILTER LOGIC (Poly-Format fix applied)
   const filteredProducts = products.filter(product => {
     const type = product.productType || 'ebook'; 
     const matchesType = filter === 'all' || type === filter;
@@ -109,6 +113,30 @@ export default function AdminDashboard() {
           <div className="bg-[#111] border border-white/10 p-5 rounded-xl flex items-center gap-4"><div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500"><Package size={24} /></div><div><p className="text-gray-500 text-xs font-bold tracking-widest uppercase">Library Size</p><h3 className="text-3xl font-serif text-white">{stats.totalProducts}</h3></div></div>
           <div className="bg-[#111] border border-white/10 p-5 rounded-xl flex items-center gap-4"><div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center text-green-500"><DollarSign size={24} /></div><div><p className="text-gray-500 text-xs font-bold tracking-widest uppercase">Total Revenue</p><h3 className="text-3xl font-serif text-white">₦{stats.totalRevenue.toLocaleString()}</h3></div></div>
           <div className="bg-[#111] border border-white/10 p-5 rounded-xl flex items-center gap-4"><div className="w-12 h-12 bg-[#d4af37]/10 rounded-full flex items-center justify-center text-[#d4af37]"><ShoppingBag size={24} /></div><div><p className="text-gray-500 text-xs font-bold tracking-widest uppercase">Total Students</p><h3 className="text-3xl font-serif text-white">{stats.totalOrders}</h3></div></div>
+        </div>
+
+        {/* --- DAILY DROP MODULE (RESTORED) --- */}
+        <div className="mb-12 bg-[#111] border border-[#d4af37]/30 rounded-xl p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#d4af37]/5 blur-[80px] rounded-full pointer-events-none" />
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-[#d4af37]/10 rounded-full text-[#d4af37]"><Mic size={24} /></div>
+                <h2 className="text-xl font-serif text-white">Daily Pronunciation</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-widest text-gray-500">Word</label>
+                    <input value={dailyWord} onChange={(e) => setDailyWord(e.target.value)} placeholder="e.g. Entrepreneur" className="w-full bg-black border border-white/10 p-3 rounded-lg outline-none focus:border-[#d4af37]" />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-widest text-gray-500">Audio</label>
+                    {dailyAudio ? (
+                        <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 p-3 rounded-lg text-green-500 text-sm"><CheckCircle size={16} /> Uploaded <button onClick={() => setDailyAudio("")} className="ml-auto underline">Change</button></div>
+                    ) : (
+                        <div className="bg-black border border-white/10 rounded-lg p-1"><UploadButton endpoint="productFile" onClientUploadComplete={(res) => setDailyAudio(res[0].url)} /></div>
+                    )}
+                </div>
+                <button onClick={saveDailyDrop} disabled={dailySaving} className="h-[50px] bg-[#d4af37] text-black font-bold rounded-lg hover:bg-white transition-colors flex items-center justify-center gap-2">{dailySaving ? <Loader2 className="animate-spin" /> : "Publish"}</button>
+            </div>
         </div>
 
         {/* FILTERS */}
@@ -143,7 +171,7 @@ export default function AdminDashboard() {
           </table>
         </div>
 
-        {/* MOBILE CARDS (THE FIX) */}
+        {/* MOBILE CARDS */}
         <div className="md:hidden space-y-4">
           {filteredProducts.length === 0 ? (
              <div className="text-center py-10 text-gray-500 border border-dashed border-white/10 rounded-xl">No products found.</div>
