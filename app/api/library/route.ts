@@ -3,9 +3,8 @@ import connectDB from "@/lib/db";
 import Order from "@/models/Order";
 import Product from "@/models/Product"; 
 
-// Helper to prevent NoSQL Injection via Regex
 function escapeRegExp(string: string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
 }
 
 export async function POST(req: Request) {
@@ -18,7 +17,6 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    // SECURITY: Sanitize the input for regex
     const safeEmailRegex = new RegExp(`^${escapeRegExp(email)}$`, 'i');
 
     const orders = await Order.find({ 
@@ -29,7 +27,8 @@ export async function POST(req: Request) {
     .populate({
         path: "items.productId",
         model: Product,
-        select: "title image fileUrl"
+        // THE FIX: Added productType to the selection
+        select: "title image fileUrl productType" 
     });
 
     const books: any[] = [];
@@ -37,13 +36,13 @@ export async function POST(req: Request) {
 
     orders.forEach((order) => {
         order.items.forEach((item: any) => {
-            // Check if product exists (wasn't deleted) and hasn't been added yet
             if (item.productId && !seenIds.has(item.productId._id.toString())) {
                 books.push({
                     _id: item.productId._id,
                     title: item.title,
                     image: item.productId.image,
                     fileUrl: item.productId.fileUrl,
+                    productType: item.productId.productType, // THE FIX: Map it to the array
                     purchasedDate: order.createdAt
                 });
                 seenIds.add(item.productId._id.toString());

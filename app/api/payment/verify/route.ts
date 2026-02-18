@@ -29,10 +29,8 @@ export async function GET(req: Request) {
     await connectDB();
 
     // 2. Idempotency Check: Prevent duplicate orders
-    // We check if an order with this transaction ID already exists.
     const existingOrder = await Order.findOne({ transactionId: reference });
     if (existingOrder) {
-      // If found, return the existing order safely
       const itemIds = existingOrder.items.map((i: any) => i.productId);
       const products = await Product.find({ _id: { $in: itemIds } });
 
@@ -45,7 +43,8 @@ export async function GET(req: Request) {
              title: product?.title || item.title,
              productId: {
                 image: product?.image,
-                fileUrl: product?.fileUrl
+                fileUrl: product?.fileUrl,
+                productType: product?.productType // THE FIX: Pass the type to the frontend
              }
           };
         })
@@ -57,7 +56,6 @@ export async function GET(req: Request) {
     const meta = paystackData.data.metadata;
     const cartIds = meta?.cart_ids || [];
 
-    // SECURITY: Filter out invalid MongoDB IDs to prevent CastErrors/Crashes
     const validIds = Array.isArray(cartIds) 
       ? cartIds.filter((id: string) => mongoose.Types.ObjectId.isValid(id))
       : [];
@@ -66,38 +64,31 @@ export async function GET(req: Request) {
        return NextResponse.json({ error: "No valid products found in transaction" }, { status: 400 });
     }
 
-    // 4. PRICE VERIFICATION (The "Red Team" Fix)
-    // We fetch the products to get their TRUE price from the database.
+    // 4. PRICE VERIFICATION
     const products = await Product.find({ _id: { $in: validIds } });
 
-    // Ensure we found all the products the user claims to have bought
     if (products.length !== validIds.length) {
        return NextResponse.json({ error: "Product mismatch or invalid ID" }, { status: 400 });
     }
 
     const paidAmountKobo = paystackData.data.amount;
-    const paidCurrency = paystackData.data.currency; // NGN or USD
+    const paidCurrency = paystackData.data.currency; 
 
-    // Calculate the expected total from the Database
     const expectedTotal = products.reduce((acc: number, product: any) => {
       const price = paidCurrency === 'NGN' ? product.priceNGN : product.priceUSD;
       return acc + price;
     }, 0);
 
-    // Convert our DB total to Kobo/Cents for comparison
-    // We use Math.round to avoid floating point math errors (e.g. 19.9999999)
     const expectedTotalKobo = Math.round(expectedTotal * 100);
 
-    // Tolerance Check: We allow a tiny difference (e.g., 50 kobo) for rounding variances.
-    // If the difference is huge, it's a hacking attempt.
     if (Math.abs(paidAmountKobo - expectedTotalKobo) > 50) {
        console.error(`🚨 FRAUD DETECTED: Paid ${paidAmountKobo}, Expected ${expectedTotalKobo}`);
        return NextResponse.json({ error: "Payment amount mismatch. Order rejected." }, { status: 400 });
     }
 
-    // 5. Create Order (Only if price matched)
+    // 5. Create Order
     const newOrder = await Order.create({
-      customerName: paystackData.data.customer.email.split("@")[0], // Fallback name
+      customerName: paystackData.data.customer.email.split("@")[0], 
       customerEmail: paystackData.data.customer.email,
       transactionId: reference,
       totalAmount: paidAmountKobo / 100, 
@@ -120,7 +111,8 @@ export async function GET(req: Request) {
             title: p.title,
             productId: {
                 image: p.image,
-                fileUrl: p.fileUrl
+                fileUrl: p.fileUrl,
+                productType: p.productType // THE FIX: Pass the type to the frontend
             }
         }))
     };
