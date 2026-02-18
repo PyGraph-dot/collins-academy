@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Loader2, Download, BookOpen, AlertCircle, ShoppingBag, Play, Headphones, X, Lock, Video, Music } from "lucide-react";
+import { Search, Loader2, Download, BookOpen, AlertCircle, ShoppingBag, Play, Headphones, X, Lock, ShieldCheck, Video, Music } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
@@ -21,12 +21,12 @@ const VaultPlayer = ({ type, url, title, onClose }: { type: string, url: string,
            </button>
         </div>
         
-        <div className="bg-black w-full aspect-video flex items-center justify-center">
+        <div className="bg-black w-full aspect-video flex items-center justify-center relative">
            {type === 'video' ? (
               <video 
                 src={url} 
                 controls 
-                controlsList="nodownload" // Basic deterrent
+                controlsList="nodownload" 
                 className="w-full h-full object-contain"
                 autoPlay
               />
@@ -58,7 +58,6 @@ export default function LibraryPage() {
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
   
-  // State for the Active Player
   const [activeMedia, setActiveMedia] = useState<{url: string, title: string, type: string} | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -82,17 +81,14 @@ export default function LibraryPage() {
     }
   };
 
-  // Secure Downloader (Now ONLY for PDFs)
   const handleDownloadPDF = async (url: string, title: string) => {
     try {
       setDownloading(title);
-      // Construct proxy URL to hide source
       const secureUrl = `/api/secure-download?file=${encodeURIComponent(url)}&orderId=library_access`;
       
       const link = document.createElement('a');
       link.href = secureUrl;
       
-      // Clean title and force .pdf
       const cleanTitle = title.replace(/\.[^/.]+$/, "").replace(/[^a-z0-9]/gi, '_').toLowerCase();
       link.setAttribute('download', `${cleanTitle}.pdf`);
       
@@ -111,7 +107,6 @@ export default function LibraryPage() {
     <div className="min-h-screen bg-background pt-32 pb-20 px-6 transition-colors duration-300">
       <Header />
       
-      {/* RENDER SECURE PLAYER IF ACTIVE */}
       {activeMedia && (
          <VaultPlayer 
            type={activeMedia.type} 
@@ -123,40 +118,59 @@ export default function LibraryPage() {
 
       <div className="max-w-4xl mx-auto">
         
-        {/* Header */}
         <div className="text-center mb-12">
           <span className="text-gold text-xs font-bold tracking-widest uppercase mb-3 block">Secured Access</span>
           <h1 className="text-4xl md:text-5xl font-serif text-foreground mb-4">The Student Vault.</h1>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Enter the email address used during checkout to unlock your private library.
+            Your private library of resources and masterclasses.
           </p>
         </div>
 
-        {/* Search Box */}
-        <div className="max-w-md mx-auto mb-16">
-          <form onSubmit={handleSearch} className="relative shadow-2xl">
-            <input 
-              type="email" 
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-card border border-border p-4 pl-12 rounded-xl text-foreground outline-none focus:border-gold transition-colors placeholder:text-muted-foreground"
-            />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-            <button 
-              type="submit"
-              disabled={loading || !email}
-              className="absolute right-2 top-2 bottom-2 bg-gold hover:bg-white text-black font-bold px-6 rounded-lg transition-colors disabled:opacity-50 text-xs uppercase tracking-widest"
-            >
-              {loading ? <Loader2 className="animate-spin" /> : "Unlock"}
-            </button>
-          </form>
-          {error && (
-            <div className="flex items-center gap-2 justify-center mt-4 text-red-500 text-xs font-bold uppercase tracking-wide bg-red-500/10 py-2 rounded-lg border border-red-500/20">
-              <AlertCircle size={14} /> {error}
+        {/* DYNAMIC UI: Show Search if locked, Show Profile if unlocked */}
+        {!books ? (
+            <div className="max-w-md mx-auto mb-16">
+              <form onSubmit={handleSearch} className="relative shadow-2xl">
+                <input 
+                  type="email" 
+                  placeholder="Enter purchase email..."
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-card border border-border p-4 pl-12 rounded-xl text-foreground outline-none focus:border-gold transition-colors placeholder:text-muted-foreground"
+                />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+                <button 
+                  type="submit"
+                  disabled={loading || !email}
+                  className="absolute right-2 top-2 bottom-2 bg-gold hover:bg-white text-black font-bold px-6 rounded-lg transition-colors disabled:opacity-50 text-xs uppercase tracking-widest"
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : "Unlock"}
+                </button>
+              </form>
+              {error && (
+                <div className="flex items-center gap-2 justify-center mt-4 text-red-500 text-xs font-bold uppercase tracking-wide bg-red-500/10 py-2 rounded-lg border border-red-500/20">
+                  <AlertCircle size={14} /> {error}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+        ) : (
+            <div className="flex flex-col md:flex-row justify-between items-center bg-card border border-gold/20 p-4 rounded-xl mb-12 shadow-[0_0_30px_rgba(212,175,55,0.05)]">
+                 <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 border border-green-500/20">
+                         <ShieldCheck size={20} />
+                     </div>
+                     <div className="text-left">
+                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Vault Active For</p>
+                         <p className="text-sm font-bold text-foreground font-mono">{email}</p>
+                     </div>
+                 </div>
+                 <button 
+                    onClick={() => { setBooks(null); setEmail(""); }}
+                    className="mt-4 md:mt-0 px-4 py-2 bg-background border border-border rounded-lg text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-red-400 hover:border-red-400/50 transition-colors flex items-center gap-2"
+                 >
+                    <Lock size={14} /> Lock Vault
+                 </button>
+             </div>
+        )}
 
         {/* Results Grid */}
         {books && (
@@ -173,7 +187,7 @@ export default function LibraryPage() {
                  </div>
                  <h3 className="text-lg font-serif text-foreground mb-2">Vault is Empty</h3>
                  <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-8">
-                   No purchases found linked to <span className="text-foreground font-mono">{email}</span>.
+                   No purchases found linked to this email.
                  </p>
                  <Link href="/shop" className="inline-flex items-center gap-2 bg-gold text-black px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-white transition-colors">
                     <ShoppingBag size={16} /> Visit Academy Shop
@@ -182,7 +196,7 @@ export default function LibraryPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {books.map((book) => {
-                  const type = book.productType || 'ebook'; // Default to ebook for legacy
+                  const type = book.productType || 'ebook'; 
                   
                   return (
                   <div key={book._id} className="bg-card border border-border p-5 rounded-2xl flex items-center gap-5 group hover:border-gold/50 transition-all shadow-md">
@@ -227,7 +241,6 @@ export default function LibraryPage() {
                               <span>{downloading === book.title ? "Saving..." : "Download"}</span>
                             </button>
                           ) : (
-                            // Player Trigger for Audio/Video
                             <button 
                               onClick={() => setActiveMedia({url: book.fileUrl, title: book.title, type: type})}
                               className={`inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-colors border px-5 py-2.5 rounded-lg shadow-sm
