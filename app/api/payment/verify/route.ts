@@ -6,6 +6,28 @@ import mongoose from "mongoose";
 
 export const dynamic = 'force-dynamic';
 
+// CONFIG: Must match checkout/route.ts exactly
+const CURRENT_MARKET_RATE = 1700; 
+
+function getExchangeRate(currency: string) {
+  if (currency === "USD") return CURRENT_MARKET_RATE;
+  return 1; 
+}
+
+// THE FIX: We must calculate the expected fee exactly how the checkout route does
+function calculateDynamicTotal(amount: number, currency: string) {
+  let effectiveAmount = amount;
+  if (currency === "USD") {
+     effectiveAmount = amount * CURRENT_MARKET_RATE;
+  }
+
+  let flatFee = 100;
+  const percentFee = 0.015;
+  if (effectiveAmount < 2500) flatFee = 0;
+  let totalToCharge = (effectiveAmount + flatFee) / (1 - percentFee);
+  return Math.ceil(totalToCharge); 
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -70,13 +92,17 @@ export async function GET(req: Request) {
     const paidAmountKobo = paystackData.data.amount;
     const paidCurrency = paystackData.data.currency; 
 
-    const expectedTotal = products.reduce((acc: number, product: any) => {
+    // Calculate the raw database total
+    const rawTotal = products.reduce((acc: number, product: any) => {
       const price = paidCurrency === 'NGN' ? product.priceNGN : product.priceUSD;
       return acc + price;
     }, 0);
 
-    const expectedTotalKobo = Math.round(expectedTotal * 100);
+    // THE FIX: Calculate the expected total *including* the Paystack fee
+    const expectedTotalWithFees = calculateDynamicTotal(rawTotal, paidCurrency);
+    const expectedTotalKobo = expectedTotalWithFees * 100;
 
+    // We allow a tiny 50 kobo variance for floating point rounding
     if (Math.abs(paidAmountKobo - expectedTotalKobo) > 50) {
        console.error(`🚨 FRAUD DETECTED: Paid ${paidAmountKobo}, Expected ${expectedTotalKobo}`);
        return NextResponse.json({ error: "Payment amount mismatch. Order rejected." }, { status: 400 });
@@ -86,7 +112,8 @@ export async function GET(req: Request) {
       customerName: paystackData.data.customer.email.split("@")[0], 
       customerEmail: paystackData.data.customer.email,
       transactionId: reference,
-      totalAmount: paidAmountKobo / 100, 
+      // We save the raw amount (revenue) to the database, not the fee-inflated amount
+      totalAmount: rawTotal, 
       currency: paidCurrency,
       status: "success",
       items: products.map((p: any) => ({
@@ -98,12 +125,10 @@ export async function GET(req: Request) {
     });
 
     // === NEW: THE ALGORITHM UPDATER ===
-    // Increment the salesCount for all products in this successful order
     await Product.updateMany(
         { _id: { $in: validIds } },
         { $inc: { salesCount: 1 } }
     );
-    // ==================================
 
     const orderResponse = {
         _id: newOrder._id,
