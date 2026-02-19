@@ -3,8 +3,7 @@ import connectDB from "@/lib/db";
 import Order from "@/models/Order";
 import Product from "@/models/Product"; 
 import Otp from "@/models/Otp";
-import Session from "@/models/Session"; // NEW: Import the Session model
-import crypto from "crypto";
+import Session from "@/models/Session";
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
@@ -12,34 +11,38 @@ function escapeRegExp(string: string) {
 
 export async function POST(req: Request) {
   try {
-    const { email, code, token } = await req.json();
+    let { email, code, token } = await req.json();
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
+
+    // THE FIX: Bulletproof Sanitization (Removes ghost spaces and capital letters)
+    const cleanEmail = email.trim().toLowerCase();
 
     await connectDB();
     let generatedToken = null;
 
     // === PATH A: AUTO-LOGIN VIA VAULT PASS (TOKEN) ===
     if (token) {
-        const validSession = await Session.findOne({ email: email.toLowerCase(), token: token });
+        const validSession = await Session.findOne({ email: cleanEmail, token: token });
         if (!validSession) {
             return NextResponse.json({ error: "Session expired. Please log in again." }, { status: 401 });
         }
     } 
     // === PATH B: MANUAL LOGIN VIA OTP CODE ===
     else if (code) {
-        const validOtp = await Otp.findOne({ email: email.toLowerCase(), code: code });
+        const validOtp = await Otp.findOne({ email: cleanEmail, code: code });
         if (!validOtp) {
             return NextResponse.json({ error: "Invalid or expired access code." }, { status: 401 });
         }
+        
         // Burn the OTP so it can't be reused
         await Otp.deleteOne({ _id: validOtp._id });
 
-        // Generate a 30-day Vault Pass token for the browser
-        generatedToken = crypto.randomBytes(32).toString("hex");
-        await Session.create({ email: email.toLowerCase(), token: generatedToken });
+        // THE FIX: Use Web Crypto API (Vercel-Safe) to generate the 30-day token
+        generatedToken = crypto.randomUUID() + "-" + Date.now().toString(36);
+        await Session.create({ email: cleanEmail, token: generatedToken });
     } 
     // === NO AUTH PROVIDED ===
     else {
@@ -47,7 +50,7 @@ export async function POST(req: Request) {
     }
 
     // === FETCH THE VAULT ===
-    const safeEmailRegex = new RegExp(`^${escapeRegExp(email)}$`, 'i');
+    const safeEmailRegex = new RegExp(`^${escapeRegExp(cleanEmail)}$`, 'i');
     const orders = await Order.find({ 
         customerEmail: { $regex: safeEmailRegex }, 
         status: "success" 
@@ -78,7 +81,6 @@ export async function POST(req: Request) {
         });
     });
 
-    // Return the books AND the new token (if one was just generated)
     return NextResponse.json({ books, token: generatedToken });
 
   } catch (error) {

@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 
-// Vault Player Component (Unchanged)
 const VaultPlayer = ({ type, url, title, onClose }: { type: string, url: string, title: string, onClose: () => void }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-in fade-in duration-300">
@@ -48,7 +47,7 @@ export default function LibraryPage() {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [activeMedia, setActiveMedia] = useState<{url: string, title: string, type: string} | null>(null);
 
-  // THE MEMORY ENGINE: Check for saved token on page load
+  // CHECK FOR VAULT PASS ON LOAD
   useEffect(() => {
     const savedEmail = localStorage.getItem("vault_email");
     const savedToken = localStorage.getItem("vault_token");
@@ -66,7 +65,7 @@ export default function LibraryPage() {
           const res = await fetch("/api/library", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: savedEmail, token: savedToken }),
+            body: JSON.stringify({ email: savedEmail.trim().toLowerCase(), token: savedToken }),
           });
           const data = await res.json();
           
@@ -74,7 +73,6 @@ export default function LibraryPage() {
               setBooks(data.books);
               setAuthStep('unlocked');
           } else {
-              // Token expired or invalid, wipe it and ask for email
               localStorage.removeItem("vault_token");
               localStorage.removeItem("vault_email");
               setAuthStep('email');
@@ -89,11 +87,13 @@ export default function LibraryPage() {
     if (!email) return;
     setLoading(true); setError("");
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
       const res = await fetch("/api/library/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: cleanEmail }),
       });
       const data = await res.json();
       
@@ -111,18 +111,20 @@ export default function LibraryPage() {
     if (!code || code.length !== 6) return setError("Please enter the 6-digit code.");
     setLoading(true); setError(""); setBooks(null);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
       const res = await fetch("/api/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }), 
+        body: JSON.stringify({ email: cleanEmail, code }), 
       });
       const data = await res.json();
       if (res.ok && data.books) {
-          // SAVE THE SESSION FOR NEXT TIME
+          // SAVE THE 30-DAY PASS FOR NEXT TIME
           if (data.token) {
               localStorage.setItem("vault_token", data.token);
-              localStorage.setItem("vault_email", email);
+              localStorage.setItem("vault_email", cleanEmail);
           }
           setBooks(data.books);
           setAuthStep('unlocked'); 
@@ -141,6 +143,7 @@ export default function LibraryPage() {
       localStorage.removeItem("vault_email");
       setBooks(null);
       setCode("");
+      setEmail("");
       setAuthStep('email');
   };
 
@@ -184,7 +187,6 @@ export default function LibraryPage() {
           </p>
         </div>
 
-        {/* STEP 1: EMAIL FORM */}
         {authStep === 'email' && (
             <div className="max-w-md mx-auto mb-16 animate-in fade-in duration-300">
               <form onSubmit={handleRequestOtp} className="relative shadow-2xl">
@@ -201,7 +203,6 @@ export default function LibraryPage() {
             </div>
         )}
 
-        {/* STEP 2: OTP FORM */}
         {authStep === 'otp' && (
             <div className="max-w-md mx-auto mb-16 bg-card border border-border p-8 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-right-4 duration-300 text-center">
                 <div className="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center mx-auto mb-4 border border-gold/20"><KeyRound size={24} /></div>
@@ -226,7 +227,6 @@ export default function LibraryPage() {
             </div>
         )}
 
-        {/* STEP 3: VAULT UNLOCKED */}
         {authStep === 'unlocked' && books && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
              <div className="flex flex-col md:flex-row justify-between items-center bg-card border border-gold/20 p-4 rounded-xl mb-12 shadow-[0_0_30px_rgba(212,175,55,0.05)]">
