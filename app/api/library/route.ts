@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Order from "@/models/Order";
 import Product from "@/models/Product"; 
+import Otp from "@/models/Otp"; // NEW: Import OTP Model
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
@@ -9,13 +10,25 @@ function escapeRegExp(string: string) {
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json();
+    const { email, code } = await req.json(); // NEW: Expect the code
 
-    if (!email || typeof email !== 'string') {
-      return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
+    // NEW: Strict Gateway
+    if (!email || typeof email !== 'string' || !code) {
+      return NextResponse.json({ error: "Email and access code are required" }, { status: 400 });
     }
 
     await connectDB();
+
+    // === NEW: OTP VERIFICATION INTERCEPTOR ===
+    const validOtp = await Otp.findOne({ email: email.toLowerCase(), code: code });
+    
+    if (!validOtp) {
+        return NextResponse.json({ error: "Invalid or expired access code." }, { status: 401 });
+    }
+
+    // Burn the OTP so it can never be used twice
+    await Otp.deleteOne({ _id: validOtp._id });
+    // =========================================
 
     const safeEmailRegex = new RegExp(`^${escapeRegExp(email)}$`, 'i');
 

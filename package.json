@@ -25,6 +25,7 @@
     "postcss": "^8.4.31",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "resend": "^6.9.2",
     "tailwind-merge": "^3.4.0",
     "uploadthing": "^7.7.4",
     "zustand": "^5.0.11"

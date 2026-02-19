@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Loader2, Download, BookOpen, AlertCircle, ShoppingBag, Play, Headphones, X, Lock, ShieldCheck, Video, Music } from "lucide-react";
+import { Search, Loader2, Download, BookOpen, AlertCircle, ShoppingBag, Play, Headphones, X, Lock, ShieldCheck, Video, Music, KeyRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
@@ -52,7 +52,10 @@ const VaultPlayer = ({ type, url, title, onClose }: { type: string, url: string,
 
 
 export default function LibraryPage() {
+  // NEW: Multi-step UI state
+  const [authStep, setAuthStep] = useState<'email' | 'otp' | 'unlocked'>('email');
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [books, setBooks] = useState<any[] | null>(null);
   const [error, setError] = useState("");
@@ -60,22 +63,53 @@ export default function LibraryPage() {
   
   const [activeMedia, setActiveMedia] = useState<{url: string, title: string, type: string} | null>(null);
 
-  const handleSearch = async (e: React.FormEvent) => {
+  // STEP 1: Ask for the Code
+  const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+    setLoading(true); setError("");
+
+    try {
+      const res = await fetch("/api/library/otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+          setAuthStep('otp'); // Switch UI to code input
+      } else {
+          setError(data.error || "Failed to send code.");
+      }
+    } catch (err) {
+      setError("Network Error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // STEP 2: Verify the Code & Fetch Books
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code || code.length !== 6) return setError("Please enter the 6-digit code.");
     setLoading(true); setError(""); setBooks(null);
 
     try {
       const res = await fetch("/api/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, code }), // Send both
       });
       const data = await res.json();
-      if (data.books) setBooks(data.books);
-      else setError("No purchases found for this email.");
+      if (res.ok && data.books) {
+          setBooks(data.books);
+          setAuthStep('unlocked'); // Open the vault
+      } else {
+          setError(data.error || "Invalid code.");
+      }
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      setError("Network Error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -126,10 +160,10 @@ export default function LibraryPage() {
           </p>
         </div>
 
-        {/* DYNAMIC UI: Show Search if locked, Show Profile if unlocked */}
-        {!books ? (
-            <div className="max-w-md mx-auto mb-16">
-              <form onSubmit={handleSearch} className="relative shadow-2xl">
+        {/* STEP 1 UI: EMAIL FORM */}
+        {authStep === 'email' && (
+            <div className="max-w-md mx-auto mb-16 animate-in fade-in duration-300">
+              <form onSubmit={handleRequestOtp} className="relative shadow-2xl">
                 <input 
                   type="email" 
                   placeholder="Enter purchase email..."
@@ -143,7 +177,7 @@ export default function LibraryPage() {
                   disabled={loading || !email}
                   className="absolute right-2 top-2 bottom-2 bg-gold hover:bg-white text-black font-bold px-6 rounded-lg transition-colors disabled:opacity-50 text-xs uppercase tracking-widest"
                 >
-                  {loading ? <Loader2 className="animate-spin" /> : "Unlock"}
+                  {loading ? <Loader2 className="animate-spin" /> : "Access"}
                 </button>
               </form>
               {error && (
@@ -152,8 +186,37 @@ export default function LibraryPage() {
                 </div>
               )}
             </div>
-        ) : (
-            <div className="flex flex-col md:flex-row justify-between items-center bg-card border border-gold/20 p-4 rounded-xl mb-12 shadow-[0_0_30px_rgba(212,175,55,0.05)]">
+        )}
+
+        {/* STEP 2 UI: OTP FORM */}
+        {authStep === 'otp' && (
+            <div className="max-w-md mx-auto mb-16 bg-card border border-border p-8 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-right-4 duration-300 text-center">
+                <div className="w-12 h-12 bg-gold/10 text-gold rounded-full flex items-center justify-center mx-auto mb-4 border border-gold/20"><KeyRound size={24} /></div>
+                <h3 className="text-xl font-serif text-foreground mb-2">Check your email</h3>
+                <p className="text-xs text-muted-foreground mb-6">We sent a 6-digit access code to <span className="font-bold text-foreground">{email}</span></p>
+                
+                <form onSubmit={handleVerifyOtp}>
+                    <input 
+                        type="text" placeholder="------" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                        className="w-full bg-background border border-border p-4 rounded-xl text-center text-2xl font-mono tracking-[1em] text-gold outline-none focus:border-gold transition-colors mb-4"
+                    />
+                    <button type="submit" disabled={loading || code.length !== 6} className="w-full py-4 bg-gold hover:bg-white text-black font-bold rounded-xl transition-colors disabled:opacity-50 text-xs uppercase tracking-widest flex justify-center items-center gap-2">
+                        {loading ? <Loader2 className="animate-spin" /> : "Unlock Vault"}
+                    </button>
+                </form>
+                
+                <div className="mt-6 flex justify-between text-xs text-muted-foreground">
+                    <button onClick={() => setAuthStep('email')} className="hover:text-gold transition-colors underline">Change Email</button>
+                    <button onClick={handleRequestOtp} className="hover:text-gold transition-colors underline">Resend Code</button>
+                </div>
+                {error && <div className="flex items-center gap-2 justify-center mt-4 text-red-500 text-xs font-bold uppercase tracking-wide"><AlertCircle size={14} /> {error}</div>}
+            </div>
+        )}
+
+        {/* STEP 3 UI: VAULT UNLOCKED */}
+        {authStep === 'unlocked' && books && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="flex flex-col md:flex-row justify-between items-center bg-card border border-gold/20 p-4 rounded-xl mb-12 shadow-[0_0_30px_rgba(212,175,55,0.05)]">
                  <div className="flex items-center gap-3">
                      <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 border border-green-500/20">
                          <ShieldCheck size={20} />
@@ -164,17 +227,13 @@ export default function LibraryPage() {
                      </div>
                  </div>
                  <button 
-                    onClick={() => { setBooks(null); setEmail(""); }}
+                    onClick={() => { setAuthStep('email'); setBooks(null); setCode(""); }}
                     className="mt-4 md:mt-0 px-4 py-2 bg-background border border-border rounded-lg text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-red-400 hover:border-red-400/50 transition-colors flex items-center gap-2"
                  >
                     <Lock size={14} /> Lock Vault
                  </button>
              </div>
-        )}
 
-        {/* Results Grid */}
-        {books && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-center mb-8 pb-4 border-b border-border">
                <h3 className="text-foreground font-serif text-xl md:text-2xl">Your Collection</h3>
                <span className="bg-background border border-border px-3 py-1 rounded-full text-xs text-muted-foreground">{books.length} Asset{books.length !== 1 && 's'}</span>
