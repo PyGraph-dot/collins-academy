@@ -6,7 +6,6 @@ import { ArrowLeft, Loader2, UploadCloud, X, CheckCircle, Video, BookOpen, Music
 import Link from "next/link";
 import { UploadButton } from "@/lib/uploadthing";
 
-// Define the steps for the Wizard
 const STEPS = [
   { id: 1, name: "Type" },
   { id: 2, name: "Media" },
@@ -16,7 +15,7 @@ const STEPS = [
 export default function AddProduct() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1, 2, or 3
+  const [step, setStep] = useState(1);
   
   const [formData, setFormData] = useState({
     title: "",
@@ -25,8 +24,9 @@ export default function AddProduct() {
     priceUSD: "",
     image: "",      
     fileUrl: "",    
-    productType: "ebook", // Default
-    duration: "",         // e.g. "150 pages" or "2h 30m"
+    previewUrl: "", // NEW: The Trailer Bucket
+    productType: "ebook", 
+    duration: "",         
   });
 
   const handleSubmit = async () => {
@@ -62,7 +62,6 @@ export default function AddProduct() {
     }
   };
 
-  // Helper to Render Step Indicators
   const StepIndicator = () => (
     <div className="flex items-center justify-center gap-4 mb-8">
         {STEPS.map((s) => (
@@ -80,20 +79,19 @@ export default function AddProduct() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-6 md:p-12 flex flex-col items-center">
       
-      {/* HEADER */}
       <div className="w-full max-w-3xl flex items-center justify-between mb-8">
          <Link href="/admin" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
             <ArrowLeft size={18} /> <span className="text-sm">Cancel</span>
          </Link>
          <h1 className="font-serif text-xl">New Product Wizard</h1>
-         <div className="w-16" /> {/* Spacer */}
+         <div className="w-16" />
       </div>
 
       <StepIndicator />
 
       <div className="w-full max-w-2xl bg-[#111] border border-white/10 rounded-2xl p-8 shadow-2xl">
         
-        {/* === STEP 1: PRODUCT TYPE === */}
+        {/* STEP 1: TYPE */}
         {step === 1 && (
             <div className="space-y-6">
                 <h2 className="text-2xl font-serif text-center mb-6">What are you creating?</h2>
@@ -119,12 +117,12 @@ export default function AddProduct() {
             </div>
         )}
 
-        {/* === STEP 2: UPLOADS === */}
+        {/* STEP 2: UPLOADS */}
         {step === 2 && (
             <div className="space-y-6">
                 <h2 className="text-2xl font-serif text-center mb-6">Upload Assets</h2>
                 
-                {/* Cover Image */}
+                {/* 1. Cover Image */}
                 <div className="bg-black/40 border border-dashed border-white/20 rounded-xl p-6 text-center">
                     <label className="block text-xs uppercase tracking-wider text-[#d4af37] mb-4">1. Cover Image</label>
                     {formData.image ? (
@@ -139,14 +137,14 @@ export default function AddProduct() {
                     )}
                 </div>
 
-                {/* Digital File */}
+                {/* 2. Main Secure File */}
                 <div className="bg-black/40 border border-dashed border-white/20 rounded-xl p-6 text-center">
                     <label className="block text-xs uppercase tracking-wider text-[#d4af37] mb-4">
-                        2. The {formData.productType === 'video' ? 'Video File' : formData.productType === 'audio' ? 'Audio File' : 'PDF File'}
+                        2. The Vault File ({formData.productType === 'video' ? 'Full Video' : formData.productType === 'audio' ? 'Full Audio' : 'Secure PDF'})
                     </label>
                     {formData.fileUrl ? (
                         <div className="flex items-center justify-center gap-3 bg-green-500/10 p-4 rounded-lg border border-green-500/20 text-green-500">
-                             <CheckCircle size={20} /> File Uploaded Successfully
+                             <CheckCircle size={20} /> Vault File Uploaded
                              <button onClick={() => setFormData({...formData, fileUrl: ""})} className="ml-2 hover:text-white"><X size={16}/></button>
                         </div>
                     ) : (
@@ -155,6 +153,26 @@ export default function AddProduct() {
                         </div>
                     )}
                 </div>
+
+                {/* 3. The Trailer (Only for Video/Audio) */}
+                {formData.productType !== 'ebook' && (
+                    <div className="bg-black/40 border border-dashed border-white/20 rounded-xl p-6 text-center">
+                        <label className="block text-xs uppercase tracking-wider text-[#d4af37] mb-4">
+                            3. Public Teaser / Trailer (Optional)
+                        </label>
+                        <p className="text-xs text-gray-500 mb-4">Upload a 30-60 second preview to hook buyers.</p>
+                        {formData.previewUrl ? (
+                            <div className="flex items-center justify-center gap-3 bg-[#d4af37]/10 p-4 rounded-lg border border-[#d4af37]/20 text-[#d4af37]">
+                                 <CheckCircle size={20} /> Trailer Uploaded
+                                 <button onClick={() => setFormData({...formData, previewUrl: ""})} className="ml-2 hover:text-white"><X size={16}/></button>
+                            </div>
+                        ) : (
+                            <div className="flex justify-center">
+                                 <UploadButton endpoint="productFile" onClientUploadComplete={(res) => setFormData({...formData, previewUrl: res[0].url})} />
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="flex gap-4 mt-4">
                     <button onClick={() => setStep(1)} className="flex-1 py-4 text-gray-400 hover:text-white">Back</button>
@@ -165,7 +183,7 @@ export default function AddProduct() {
             </div>
         )}
 
-        {/* === STEP 3: DETAILS & PRICING === */}
+        {/* STEP 3: DETAILS */}
         {step === 3 && (
             <div className="space-y-4">
                 <h2 className="text-2xl font-serif text-center mb-6">Final Details</h2>
@@ -173,25 +191,22 @@ export default function AddProduct() {
                 <div>
                     <label className="text-xs text-gray-500 uppercase">Product Title</label>
                     <input 
-                        value={formData.title} // CONTROLLED INPUT
+                        value={formData.title} 
                         onChange={(e) => setFormData({...formData, title: e.target.value})}
                         className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none"
-                        placeholder="e.g. British Accent Masterclass"
                     />
                 </div>
 
                 <div>
                     <label className="text-xs text-gray-500 uppercase">Description</label>
                     <textarea 
-                        value={formData.description} // CONTROLLED INPUT
+                        value={formData.description} 
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
                         rows={4}
                         className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none"
-                        placeholder="What will students learn?"
                     />
                 </div>
 
-                {/* Dynamic Metadata Field */}
                 <div>
                      <label className="text-xs text-gray-500 uppercase">
                         {formData.productType === 'ebook' ? 'Number of Pages' : 'Duration (Minutes)'}
@@ -200,7 +215,6 @@ export default function AddProduct() {
                         value={formData.duration}
                         onChange={(e) => setFormData({...formData, duration: e.target.value})}
                         className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none"
-                        placeholder={formData.productType === 'ebook' ? "e.g. 150 Pages" : "e.g. 45 Mins"}
                     />
                 </div>
 
