@@ -24,14 +24,19 @@ export default function AddProduct() {
     priceUSD: "",
     image: "",      
     fileUrl: "",    
-    previewUrl: "", // NEW: The Trailer Bucket
+    previewUrl: "", 
     productType: "ebook", 
     duration: "",         
   });
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.fileUrl || !formData.image) {
-        alert("Please fill in all required fields and uploads.");
+    // Trim spaces to ensure valid strings
+    if (!formData.title.trim() || !formData.description.trim()) {
+        alert("Please enter a valid Title and Description.");
+        return;
+    }
+    if (!formData.fileUrl || !formData.image) {
+        alert("Cover Image and Vault File are required.");
         return;
     }
 
@@ -43,6 +48,8 @@ export default function AddProduct() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
           priceNGN: Number(formData.priceNGN),
           priceUSD: Number(formData.priceUSD),
         }),
@@ -103,7 +110,7 @@ export default function AddProduct() {
                     ].map((type) => (
                         <button 
                             key={type.id}
-                            onClick={() => setFormData({...formData, productType: type.id})}
+                            onClick={() => setFormData(prev => ({...prev, productType: type.id}))}
                             className={`p-6 rounded-xl border flex flex-col items-center gap-3 transition-all ${formData.productType === type.id ? "border-[#d4af37] bg-[#d4af37]/10 text-[#d4af37]" : "border-white/10 hover:bg-white/5 text-gray-400"}`}
                         >
                             <type.icon size={32} />
@@ -128,11 +135,12 @@ export default function AddProduct() {
                     {formData.image ? (
                         <div className="relative w-32 h-40 mx-auto">
                             <img src={formData.image} className="w-full h-full object-cover rounded-lg border border-white/20" />
-                            <button onClick={() => setFormData({...formData, image: ""})} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
+                            <button onClick={() => setFormData(prev => ({...prev, image: ""}))} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
                         </div>
                     ) : (
                         <div className="flex justify-center">
-                            <UploadButton endpoint="productImage" onClientUploadComplete={(res) => setFormData({...formData, image: res[0].url})} />
+                            {/* FIX: Use prev state to prevent wiping out data while typing */}
+                            <UploadButton endpoint="productImage" onClientUploadComplete={(res) => setFormData(prev => ({...prev, image: res[0].url}))} />
                         </div>
                     )}
                 </div>
@@ -145,11 +153,11 @@ export default function AddProduct() {
                     {formData.fileUrl ? (
                         <div className="flex items-center justify-center gap-3 bg-green-500/10 p-4 rounded-lg border border-green-500/20 text-green-500">
                              <CheckCircle size={20} /> Vault File Uploaded
-                             <button onClick={() => setFormData({...formData, fileUrl: ""})} className="ml-2 hover:text-white"><X size={16}/></button>
+                             <button onClick={() => setFormData(prev => ({...prev, fileUrl: ""}))} className="ml-2 hover:text-white"><X size={16}/></button>
                         </div>
                     ) : (
                         <div className="flex justify-center">
-                             <UploadButton endpoint="productFile" onClientUploadComplete={(res) => setFormData({...formData, fileUrl: res[0].url})} />
+                             <UploadButton endpoint="productFile" onClientUploadComplete={(res) => setFormData(prev => ({...prev, fileUrl: res[0].url}))} />
                         </div>
                     )}
                 </div>
@@ -164,11 +172,11 @@ export default function AddProduct() {
                         {formData.previewUrl ? (
                             <div className="flex items-center justify-center gap-3 bg-[#d4af37]/10 p-4 rounded-lg border border-[#d4af37]/20 text-[#d4af37]">
                                  <CheckCircle size={20} /> Trailer Uploaded
-                                 <button onClick={() => setFormData({...formData, previewUrl: ""})} className="ml-2 hover:text-white"><X size={16}/></button>
+                                 <button onClick={() => setFormData(prev => ({...prev, previewUrl: ""}))} className="ml-2 hover:text-white"><X size={16}/></button>
                             </div>
                         ) : (
                             <div className="flex justify-center">
-                                 <UploadButton endpoint="productFile" onClientUploadComplete={(res) => setFormData({...formData, previewUrl: res[0].url})} />
+                                 <UploadButton endpoint="productFile" onClientUploadComplete={(res) => setFormData(prev => ({...prev, previewUrl: res[0].url}))} />
                             </div>
                         )}
                     </div>
@@ -192,7 +200,7 @@ export default function AddProduct() {
                     <label className="text-xs text-gray-500 uppercase">Product Title</label>
                     <input 
                         value={formData.title} 
-                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                        onChange={(e) => setFormData(prev => ({...prev, title: e.target.value}))}
                         className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none"
                     />
                 </div>
@@ -201,7 +209,7 @@ export default function AddProduct() {
                     <label className="text-xs text-gray-500 uppercase">Description</label>
                     <textarea 
                         value={formData.description} 
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
                         rows={4}
                         className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none"
                     />
@@ -213,7 +221,7 @@ export default function AddProduct() {
                      </label>
                      <input 
                         value={formData.duration}
-                        onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                        onChange={(e) => setFormData(prev => ({...prev, duration: e.target.value}))}
                         className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none"
                     />
                 </div>
@@ -221,11 +229,11 @@ export default function AddProduct() {
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="text-xs text-gray-500 uppercase">Price (NGN)</label>
-                        <input type="number" value={formData.priceNGN} onChange={(e) => setFormData({...formData, priceNGN: e.target.value})} className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none" />
+                        <input type="number" value={formData.priceNGN} onChange={(e) => setFormData(prev => ({...prev, priceNGN: e.target.value}))} className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none" />
                     </div>
                     <div>
                         <label className="text-xs text-gray-500 uppercase">Price (USD)</label>
-                        <input type="number" value={formData.priceUSD} onChange={(e) => setFormData({...formData, priceUSD: e.target.value})} className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none" />
+                        <input type="number" value={formData.priceUSD} onChange={(e) => setFormData(prev => ({...prev, priceUSD: e.target.value}))} className="w-full bg-[#0a0a0a] border border-white/10 p-4 rounded-lg mt-2 focus:border-[#d4af37] outline-none" />
                     </div>
                 </div>
 
