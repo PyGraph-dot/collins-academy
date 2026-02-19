@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Order from "@/models/Order";
 import Product from "@/models/Product"; 
-import Otp from "@/models/Otp"; // NEW: Import OTP Model
+import Otp from "@/models/Otp";
+import Session from "@/models/Session"; // NEW: Import the Session model
+import crypto from "crypto";
 
 function escapeRegExp(string: string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
@@ -10,28 +12,42 @@ function escapeRegExp(string: string) {
 
 export async function POST(req: Request) {
   try {
-    const { email, code } = await req.json(); // NEW: Expect the code
+    const { email, code, token } = await req.json();
 
-    // NEW: Strict Gateway
-    if (!email || typeof email !== 'string' || !code) {
-      return NextResponse.json({ error: "Email and access code are required" }, { status: 400 });
+    if (!email) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
     await connectDB();
+    let generatedToken = null;
 
-    // === NEW: OTP VERIFICATION INTERCEPTOR ===
-    const validOtp = await Otp.findOne({ email: email.toLowerCase(), code: code });
-    
-    if (!validOtp) {
-        return NextResponse.json({ error: "Invalid or expired access code." }, { status: 401 });
+    // === PATH A: AUTO-LOGIN VIA VAULT PASS (TOKEN) ===
+    if (token) {
+        const validSession = await Session.findOne({ email: email.toLowerCase(), token: token });
+        if (!validSession) {
+            return NextResponse.json({ error: "Session expired. Please log in again." }, { status: 401 });
+        }
+    } 
+    // === PATH B: MANUAL LOGIN VIA OTP CODE ===
+    else if (code) {
+        const validOtp = await Otp.findOne({ email: email.toLowerCase(), code: code });
+        if (!validOtp) {
+            return NextResponse.json({ error: "Invalid or expired access code." }, { status: 401 });
+        }
+        // Burn the OTP so it can't be reused
+        await Otp.deleteOne({ _id: validOtp._id });
+
+        // Generate a 30-day Vault Pass token for the browser
+        generatedToken = crypto.randomBytes(32).toString("hex");
+        await Session.create({ email: email.toLowerCase(), token: generatedToken });
+    } 
+    // === NO AUTH PROVIDED ===
+    else {
+        return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     }
 
-    // Burn the OTP so it can never be used twice
-    await Otp.deleteOne({ _id: validOtp._id });
-    // =========================================
-
+    // === FETCH THE VAULT ===
     const safeEmailRegex = new RegExp(`^${escapeRegExp(email)}$`, 'i');
-
     const orders = await Order.find({ 
         customerEmail: { $regex: safeEmailRegex }, 
         status: "success" 
@@ -40,8 +56,7 @@ export async function POST(req: Request) {
     .populate({
         path: "items.productId",
         model: Product,
-        // THE FIX: Added productType to the selection
-        select: "title image fileUrl productType" 
+        select: "title image fileUrl productType previewUrl" 
     });
 
     const books: any[] = [];
@@ -55,7 +70,7 @@ export async function POST(req: Request) {
                     title: item.title,
                     image: item.productId.image,
                     fileUrl: item.productId.fileUrl,
-                    productType: item.productId.productType, // THE FIX: Map it to the array
+                    productType: item.productId.productType, 
                     purchasedDate: order.createdAt
                 });
                 seenIds.add(item.productId._id.toString());
@@ -63,7 +78,8 @@ export async function POST(req: Request) {
         });
     });
 
-    return NextResponse.json({ books });
+    // Return the books AND the new token (if one was just generated)
+    return NextResponse.json({ books, token: generatedToken });
 
   } catch (error) {
     console.error("Library Fetch Error:", error);
