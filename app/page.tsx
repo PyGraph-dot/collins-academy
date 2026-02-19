@@ -1,6 +1,6 @@
 import connectDB from "@/lib/db";
 import Product from "@/models/Product";
-import DailyDrop from "@/models/DailyDrop"; // <--- IMPORT THE MODEL
+import DailyDrop from "@/models/DailyDrop"; 
 import Hero from "@/components/home/Hero";
 import Library from "@/components/home/Library";
 import LeadMagnet from "@/components/home/LeadMagnet";
@@ -13,25 +13,24 @@ export const revalidate = 3600;
 async function getData() {
   await connectDB();
 
-  // 1. Fetch Products
+  // THE BESTSELLER ALGORITHM
+  // Sorts by highest salesCount first. If tied, sorts by newest.
+  // Increased limit to 4 to match the new 4-column grid layout.
   const productsPromise = Product.find({ isPublished: true })
-    .sort({ createdAt: -1 })
-    .limit(3)
+    .sort({ salesCount: -1, createdAt: -1 }) 
+    .limit(4)
     .lean();
 
-  // 2. Fetch the Latest Daily Drop (The Fix)
   const dailyDropPromise = DailyDrop.findOne()
-    .sort({ createdAt: -1 }) // Get the newest one
+    .sort({ createdAt: -1 }) 
     .lean();
   
-  // Run both queries at the same time for speed
   const [products, dailyDrop] = await Promise.all([
     productsPromise, 
     dailyDropPromise
   ]);
 
   return {
-    // We must stringify to pass MongoDB objects (like _id and Date) to the frontend
     products: JSON.parse(JSON.stringify(products)),
     dailyDrop: dailyDrop ? JSON.parse(JSON.stringify(dailyDrop)) : null,
   };
@@ -45,7 +44,6 @@ export default async function Home() {
       <main className="bg-background text-foreground min-h-screen transition-colors duration-500">
         <Header />
         
-        {/* Now we pass the REAL audio data to the Hero */}
         <Hero dailyDrop={dailyDrop} />
         
         <Library products={products} />

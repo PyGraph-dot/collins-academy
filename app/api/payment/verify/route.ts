@@ -15,7 +15,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Missing reference" }, { status: 400 });
     }
 
-    // 1. Verify Transaction with Paystack
     const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
     });
@@ -28,7 +27,6 @@ export async function GET(req: Request) {
 
     await connectDB();
 
-    // 2. Idempotency Check: Prevent duplicate orders
     const existingOrder = await Order.findOne({ transactionId: reference });
     if (existingOrder) {
       const itemIds = existingOrder.items.map((i: any) => i.productId);
@@ -44,7 +42,7 @@ export async function GET(req: Request) {
              productId: {
                 image: product?.image,
                 fileUrl: product?.fileUrl,
-                productType: product?.productType // THE FIX: Pass the type to the frontend
+                productType: product?.productType 
              }
           };
         })
@@ -52,7 +50,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, order: enrichedOrder });
     }
 
-    // 3. Extract & Validate Metadata
     const meta = paystackData.data.metadata;
     const cartIds = meta?.cart_ids || [];
 
@@ -64,7 +61,6 @@ export async function GET(req: Request) {
        return NextResponse.json({ error: "No valid products found in transaction" }, { status: 400 });
     }
 
-    // 4. PRICE VERIFICATION
     const products = await Product.find({ _id: { $in: validIds } });
 
     if (products.length !== validIds.length) {
@@ -86,7 +82,6 @@ export async function GET(req: Request) {
        return NextResponse.json({ error: "Payment amount mismatch. Order rejected." }, { status: 400 });
     }
 
-    // 5. Create Order
     const newOrder = await Order.create({
       customerName: paystackData.data.customer.email.split("@")[0], 
       customerEmail: paystackData.data.customer.email,
@@ -102,7 +97,14 @@ export async function GET(req: Request) {
       }))
     });
 
-    // 6. Format Response
+    // === NEW: THE ALGORITHM UPDATER ===
+    // Increment the salesCount for all products in this successful order
+    await Product.updateMany(
+        { _id: { $in: validIds } },
+        { $inc: { salesCount: 1 } }
+    );
+    // ==================================
+
     const orderResponse = {
         _id: newOrder._id,
         customerEmail: newOrder.customerEmail,
@@ -112,7 +114,7 @@ export async function GET(req: Request) {
             productId: {
                 image: p.image,
                 fileUrl: p.fileUrl,
-                productType: p.productType // THE FIX: Pass the type to the frontend
+                productType: p.productType 
             }
         }))
     };

@@ -2,31 +2,22 @@ import { NextResponse } from "next/server";
 import Order from "@/models/Order"; 
 import connectDB from "@/lib/db";
 
-// CONFIG: Manual Exchange Rate
-// Expert Tip: We use a manual constant for stability. Free APIs can crash or hit limits.
-// Since we save this rate to the DB, changing this number later WON'T break old records.
 const CURRENT_MARKET_RATE = 1700; 
 
 function getExchangeRate(currency: string) {
   if (currency === "USD") return CURRENT_MARKET_RATE;
-  return 1; // NGN to NGN is always 1
+  return 1; 
 }
 
-// Helper to Calculate Paystack Fee
 function calculateDynamicTotal(amount: number, currency: string) {
   let effectiveAmount = amount;
-  
-  // 1. AUTO-CONVERT using the rate
   if (currency === "USD") {
      effectiveAmount = amount * CURRENT_MARKET_RATE;
   }
 
-  // 2. Paystack NGN Formula
   let flatFee = 100;
   const percentFee = 0.015;
-  
   if (effectiveAmount < 2500) flatFee = 0;
-  
   let totalToCharge = (effectiveAmount + flatFee) / (1 - percentFee);
   return Math.ceil(totalToCharge); 
 }
@@ -42,19 +33,46 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    // 1. Calculate Your Revenue
+    // === NEW: THE DUPLICATE PURCHASE INTERCEPTOR ===
+    // 1. Get all Product IDs in the current cart
+    const cartProductIds = items.map((i: any) => i._id);
+
+    // 2. Search the database for any successful orders by this email containing these items
+    const existingOrders = await Order.find({
+        customerEmail: email,
+        status: "success",
+        "items.productId": { $in: cartProductIds }
+    });
+
+    // 3. If a match is found, block checkout and identify the exact item
+    if (existingOrders.length > 0) {
+        let ownedItemTitle = "an item in your cart";
+        
+        existingOrders.forEach(order => {
+            order.items.forEach((item: any) => {
+                if (cartProductIds.includes(item.productId?.toString())) {
+                    ownedItemTitle = item.title;
+                }
+            });
+        });
+
+        return NextResponse.json(
+            { error: `You already own "${ownedItemTitle}". Please remove it to continue, or head to your Vault to view it.` }, 
+            { status: 400 }
+        );
+    }
+    // === END INTERCEPTOR ===
+
+
     let revenueAmount = 0;
     items.forEach((item: any) => {
       const price = currency === "NGN" ? item.priceNGN : item.priceUSD;
       revenueAmount += price * (item.quantity || 1);
     });
 
-    // 2. Get the Rate & Calculate Charge
     const exchangeRateUsed = getExchangeRate(currency);
     const chargeAmountNGN = calculateDynamicTotal(revenueAmount, currency);
 
-    // 3. Create Order in DB
-    // IMPORTANT: We save 'exchangeRateUsed' so we know exactly what the dollar was worth today.
     const newOrder = await Order.create({
       customerEmail: email,
       customerName: email.split("@")[0],
@@ -66,11 +84,10 @@ export async function POST(req: Request) {
       })),
       totalAmount: revenueAmount, 
       currency: currency, 
-      exchangeRate: exchangeRateUsed, // <--- SAVED FOREVER
+      exchangeRate: exchangeRateUsed, 
       status: "pending",
     });
 
-    // 4. Send to Paystack
     if (!process.env.PAYSTACK_SECRET_KEY) {
       return NextResponse.json({ error: "Server Error: Missing Key" }, { status: 500 });
     }
@@ -83,7 +100,8 @@ export async function POST(req: Request) {
       callback_url: `${process.env.NEXTAUTH_URL}/success`,
       metadata: {
         orderId: newOrder._id.toString(),
-        originalCurrency: currency 
+        originalCurrency: currency,
+        cart_ids: cartProductIds // Pass IDs to verify later
       },
     };
 

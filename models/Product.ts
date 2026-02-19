@@ -6,9 +6,8 @@ const ProductSchema = new Schema(
     description: { type: String, required: true },
     priceNGN: { type: Number, required: true },
     priceUSD: { type: Number, required: true },
-    image: { type: String, required: true }, // Cover Art
+    image: { type: String, required: true }, 
     
-    // NEW: What are we selling?
     productType: { 
       type: String, 
       enum: ['ebook', 'audio', 'video', 'course'], 
@@ -16,23 +15,22 @@ const ProductSchema = new Schema(
       required: true 
     },
 
-    // NEW: The Main File (Secure)
     fileUrl: { type: String, required: true }, 
-
-    // NEW: The Teaser (Public) - e.g. 30s audio clip or YouTube trailer
     previewUrl: { type: String }, 
     
-    // NEW: Metadata for UI
-    duration: { type: String }, // e.g. "150 pages" or "2h 30m"
-    fileSize: { type: String }, // e.g. "1.2 GB"
+    duration: { type: String }, 
+    fileSize: { type: String }, 
+
+    // NEW: The Bestseller Tracker
+    salesCount: { type: Number, default: 0 },
     
     isPublished: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
-// Performance Index
-ProductSchema.index({ isPublished: 1, createdAt: -1 });
+// Performance Index updated to sort bestsellers faster
+ProductSchema.index({ isPublished: 1, salesCount: -1, createdAt: -1 });
 
 const Product = models.Product || model("Product", ProductSchema);
 
