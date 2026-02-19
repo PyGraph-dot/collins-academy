@@ -2,82 +2,60 @@
 
 import { useState } from "react";
 import { useCart } from "@/store/cart";
-import { X, ShoppingBag, Trash2, Loader2, CreditCard } from "lucide-react";
+import { X, ShoppingBag, Trash2, Loader2, CreditCard, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Script from "next/script";
 
 export default function CartDrawer() {
-  const { items, isOpen, toggleCart, removeItem, currency, setCurrency, clearCart } = useCart();
+  const { items, isOpen, toggleCart, removeItem, currency, setCurrency } = useCart();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const totalAmount = items.reduce((acc, item) => {
     const price = currency === 'NGN' ? item.priceNGN : item.priceUSD;
     return acc + price;
   }, 0);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!email) {
-      alert("Please enter your email address.");
+      setError("Please enter your email address.");
       return;
     }
 
     setLoading(true);
-
-    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
-    
-    if (!publicKey) {
-      setLoading(false);
-      alert("Error: Paystack Public Key is missing.");
-      return;
-    }
-
-    if (typeof (window as any).PaystackPop === 'undefined') {
-       setLoading(false);
-       alert("Paystack is connecting... please wait 3 seconds and try again.");
-       return;
-    }
+    setError(null);
 
     try {
-      const handler = (window as any).PaystackPop.setup({
-        key: publicKey,
-        email: email,
-        amount: totalAmount * 100, 
-        currency: currency,
-        metadata: {
-          cart_ids: items.map(item => item._id),
-          custom_fields: [
-            {
-               display_name: "Items",
-               variable_name: "items",
-               value: items.map(i => i.title).join(", ")
-            }
-          ]
-        },
-        callback: function(response: any) { 
-          setLoading(false);
-          clearCart();
-          toggleCart();
-          window.location.href = `/success?reference=${response.reference}`;
-        },
-        onClose: function() {
-          setLoading(false);
-        }
+      // THE FIX: Route the checkout through the backend so the Interceptor can do its job
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, items, currency }),
       });
+      
+      const data = await res.json();
 
-      handler.openIframe();
+      if (!res.ok) {
+         // The Interceptor caught a duplicate, or Paystack failed
+         setError(data.error || "Checkout failed. Please try again.");
+         setLoading(false);
+         return;
+      }
+
+      if (data.url) {
+         // Redirect to secure Paystack hosted checkout
+         window.location.href = data.url;
+      }
 
     } catch (error: any) {
-      console.error("Paystack Error:", error);
+      console.error("Checkout Error:", error);
+      setError("Network error. Please try again.");
       setLoading(false);
-      alert("Payment Error: " + error.message);
     }
   };
 
   return (
     <>
-      <Script src="https://js.paystack.co/v1/inline.js" strategy="afterInteractive" />
-
       <AnimatePresence>
         {isOpen && (
           <>
@@ -94,7 +72,6 @@ export default function CartDrawer() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              // UPDATED: Background uses bg-card (White/Black)
               className="fixed right-0 top-0 h-full w-full max-w-md bg-card border-l border-border z-[70] p-6 flex flex-col shadow-2xl"
             >
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-border">
@@ -169,10 +146,21 @@ export default function CartDrawer() {
                       type="email" 
                       placeholder="Enter your email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (error) setError(null); // Clear error on typing
+                      }}
                       className="w-full bg-background border border-border p-3 rounded text-foreground text-sm focus:border-gold outline-none"
                     />
                   </div>
+
+                  {/* DYNAMIC ERROR BOX */}
+                  {error && (
+                      <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs p-3 rounded-lg flex items-start gap-2">
+                          <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                          <p>{error}</p>
+                      </div>
+                  )}
 
                   <button 
                     onClick={handleCheckout}

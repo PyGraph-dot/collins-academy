@@ -4,6 +4,10 @@ import connectDB from "@/lib/db";
 
 const CURRENT_MARKET_RATE = 1700; 
 
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+}
+
 function getExchangeRate(currency: string) {
   if (currency === "USD") return CURRENT_MARKET_RATE;
   return 1; 
@@ -31,20 +35,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
     await connectDB();
 
-    // === NEW: THE DUPLICATE PURCHASE INTERCEPTOR ===
-    // 1. Get all Product IDs in the current cart
+    // === NEW: BULLETPROOF DUPLICATE INTERCEPTOR ===
     const cartProductIds = items.map((i: any) => i._id);
+    const safeEmailRegex = new RegExp(`^${escapeRegExp(cleanEmail)}$`, 'i');
 
-    // 2. Search the database for any successful orders by this email containing these items
     const existingOrders = await Order.find({
-        customerEmail: email,
+        customerEmail: { $regex: safeEmailRegex },
         status: "success",
         "items.productId": { $in: cartProductIds }
     });
 
-    // 3. If a match is found, block checkout and identify the exact item
     if (existingOrders.length > 0) {
         let ownedItemTitle = "an item in your cart";
         
@@ -57,12 +60,11 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(
-            { error: `You already own "${ownedItemTitle}". Please remove it to continue, or head to your Vault to view it.` }, 
+            { error: `You already own "${ownedItemTitle}". Please remove it from your cart to continue, or head to your Library Vault to access it.` }, 
             { status: 400 }
         );
     }
     // === END INTERCEPTOR ===
-
 
     let revenueAmount = 0;
     items.forEach((item: any) => {
@@ -74,8 +76,8 @@ export async function POST(req: Request) {
     const chargeAmountNGN = calculateDynamicTotal(revenueAmount, currency);
 
     const newOrder = await Order.create({
-      customerEmail: email,
-      customerName: email.split("@")[0],
+      customerEmail: cleanEmail,
+      customerName: cleanEmail.split("@")[0],
       items: items.map((i: any) => ({
         productId: i._id,
         title: i.title,
@@ -94,14 +96,14 @@ export async function POST(req: Request) {
 
     const paystackUrl = "https://api.paystack.co/transaction/initialize";
     const payload = {
-      email: email,
+      email: cleanEmail,
       amount: chargeAmountNGN * 100, 
       currency: "NGN", 
       callback_url: `${process.env.NEXTAUTH_URL}/success`,
       metadata: {
         orderId: newOrder._id.toString(),
         originalCurrency: currency,
-        cart_ids: cartProductIds // Pass IDs to verify later
+        cart_ids: cartProductIds 
       },
     };
 
